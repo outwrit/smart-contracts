@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 // - Training run creators can remove underperforming or byzantine nodes.
 // - Rewards schedules are to be implemented later, possibly stake/hardware dependent.
 
-abstract contract DecentralizedAITNetwork is AccessControl, ReentrancyGuard {
+abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
     bytes32 public constant VALIDATOR_ROLE = keccak256("VALIDATOR_ROLE");
     bytes32 public constant TRAINER_ROLE   = keccak256("TRAINER_ROLE");
 
