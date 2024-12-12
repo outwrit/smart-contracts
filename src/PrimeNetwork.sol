@@ -2,10 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // MVP interface scaffolding for a decentralized AI training network.
-// No function implementations, just structures, events, and function signatures.
+// Initial API is designed for a permissioned network with admin, validators, and trainers.
 
 // Roles:
 // - DEFAULT_ADMIN_ROLE: Contract owner/admin.
@@ -104,15 +104,15 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
 
     // Node registration and network participation
     function joinNetwork(HardwareSpecs calldata _specs, uint256 _stake) external virtual;
-    function updateNodeHardware(HardwareSpecs calldata _specs) external virtual onlyExistingNode(msg.sender);
-    function leaveNetwork() external virtual onlyExistingNode(msg.sender);
+    function updateNodeHardware(HardwareSpecs calldata _specs) external virtual onlyExistingNode(msg.sender) {}
+    function leaveNetwork() external virtual onlyExistingNode(msg.sender) {}
 
     // Staking
-    function depositStake(uint256 _amount) external virtual onlyExistingNode(msg.sender);
-    function withdrawStake(uint256 _amount) external virtual onlyExistingNode(msg.sender);
+    function depositStake(uint256 _amount) external virtual onlyExistingNode(msg.sender) {}
+    function withdrawStake(uint256 _amount) external virtual onlyExistingNode(msg.sender) {}
 
     // Validation and slashing
-    function slashStake(address _miner, uint256 _amount) external virtual onlyValidator onlyExistingNode(_miner);
+    function slashStake(address _miner, uint256 _amount) external virtual onlyValidator onlyExistingNode(_miner) {}
 
     // Training runs
     function createTrainingRun(
@@ -121,28 +121,28 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
         uint256 _minCpuCores,
         uint256 _minRam,
         uint256 _minStorage
-    ) external virtual onlyTrainer returns (uint256);
+    ) external virtual onlyTrainer returns (uint256) {}
 
-    function closeTrainingRun(uint256 _runId) external virtual onlyTrainer;
+    function closeTrainingRun(uint256 _runId) external virtual onlyTrainer {}
 
     function joinTrainingRun(uint256 _runId) 
         external 
         virtual 
         onlyExistingNode(msg.sender) 
         trainingRunActive(_runId) 
-        meetsHardwareRequirements(_runId, nodes[msg.sender].hardware);
+        meetsHardwareRequirements(_runId, nodes[msg.sender].hardware) {}
 
     function removeNodeFromTrainingRun(uint256 _runId, address _miner, string calldata _reason) 
         external 
         virtual 
-        onlyTrainer;
+        onlyTrainer {}
 
     // Rewards
     function distributeRewards(uint256 _runId, address _miner, uint256 _amount) 
         external 
         virtual 
         onlyTrainer
-        trainingRunActive(_runId);
+        trainingRunActive(_runId) {}
 
     // View and utility functions for future logic
     function getActiveNodes() external view virtual returns (address[] memory);
