@@ -10,66 +10,71 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 // Roles:
 // - DEFAULT_ADMIN_ROLE: Contract owner/admin.
 // - VALIDATOR_ROLE: Initially a whitelisted address with authority to slash stakes.
-// - TRAINER_ROLE: Model trainers creating and managing training runs.
-// - Later roles can be extended when decentralizing validation, reward distribution, etc.
+// - TASKER_ROLE: Model trainers creating and managing compute tasks.
 
 // Key Concepts:
 // - Miners (nodes) join network with hardware specs and optional stake.
-// - Model trainers create "training runs" (subnets) with hardware requirements.
-// - Miners join/leave training runs. Only active participants earn rewards.
+// - Model trainers create compute tasks (subnets) with hardware requirements.
+// - Miners join/leave compute tasks. Only active participants earn rewards.
 // - Validators can slash stakes for fraudulent behavior.
-// - Training run creators can remove underperforming or byzantine nodes.
+// - Compute task creators can remove underperforming or byzantine nodes.
 // - Rewards schedules are to be implemented later, possibly stake/hardware dependent.
 
 abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
     bytes32 public constant VALIDATOR_ROLE = keccak256("VALIDATOR_ROLE");
-    bytes32 public constant TRAINER_ROLE   = keccak256("TRAINER_ROLE");
+    bytes32 public constant TASKER_ROLE   = keccak256("TASKER_ROLE");
 
     struct HardwareSpecs {
+        uint256 gpuModel; // hardware identifier
         uint256 gpuCount;
         uint256 gpuMemory; // in GB
+        uint256 totalFlops; // in TFLOPS
+        uint256 cpuModel; // hardware identifier
         uint256 cpuCores;
         uint256 ram;       // in GB
-        uint256 disk;   // in GB
+        uint256 disk;      // in GB
+        uint256 bandwidth; // in Gbps
     }
 
     struct Node {
         address miner;
         bool activeOnNetwork;
-        bool activeOnTrainingRun;
-        uint256 stake;            // optional staking
+        bool activeOnComputeTask;
+        uint256 stake; // optional staking
         HardwareSpecs hardware;
     }
 
-    struct TrainingRun {
-        address trainer;
+    struct ComputeTask {
+        address tasker;
         uint256 minGpuCount;
         uint256 minGpuMemory;
         uint256 minCpuCores;
         uint256 minRam;
         uint256 minStorage;
+        uint256 rewardRatePerFLOPS; // is flops the right metric?
         bool active;
         // Additional parameters such as reward distribution rates, etc.
     }
 
     // Mappings
     mapping(address => Node) public nodes;
-    mapping(uint256 => TrainingRun) public trainingRuns;
-    mapping(uint256 => address[]) public trainingRunParticipants; // runId => node addresses
+    mapping(uint256 => ComputeTask) public computeTasks;
+    mapping(uint256 => address[]) public computeTaskParticipants; // taskId => node addresses
     mapping(address => uint256) public rewardsBalance; // node => accrued rewards
 
     // Counters
-    uint256 public trainingRunCount;
+    uint256 public computeTaskCount;
 
     // Events
     event NodeJoinedNetwork(address indexed miner, HardwareSpecs specs, uint256 stake);
     event NodeLeftNetwork(address indexed miner);
-    event TrainingRunCreated(uint256 indexed runId, address indexed trainer);
-    event TrainingRunClosed(uint256 indexed runId);
-    event NodeJoinedTrainingRun(uint256 indexed runId, address indexed miner);
-    event NodeRemovedFromTrainingRun(uint256 indexed runId, address indexed miner, string reason);
+    event ComputeTaskCreated(uint256 indexed taskId, address indexed tasker);
+    event ComputeTaskClosed(uint256 indexed taskId);
+    event NodeAppliedForComputeTask(uint256 indexed taskId, address indexed miner);
+    event NodeJoinedComputeTask(uint256 indexed taskId, address indexed miner);
+    event NodeRemovedFromComputeTask(uint256 indexed taskId, address indexed miner, string reason);
     event StakeSlashed(address indexed miner, uint256 amount);
-    event RewardsDistributed(uint256 indexed runId, address indexed miner, uint256 amount);
+    event RewardsDistributed(uint256 indexed taskId, address indexed miner, uint256 amount);
 
     // Modifiers
     modifier onlyValidator() {
@@ -77,8 +82,8 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
         _;
     }
 
-    modifier onlyTrainer() {
-        require(hasRole(TRAINER_ROLE, msg.sender), "Not trainer");
+    modifier onlyTasker() {
+        require(hasRole(TASKER_ROLE, msg.sender), "Not tasker");
         _;
     }
 
@@ -87,18 +92,18 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
         _;
     }
 
-    modifier trainingRunActive(uint256 _runId) {
-        require(trainingRuns[_runId].active, "Run inactive");
+    modifier computeTaskActive(uint256 _taskId) {
+        require(computeTasks[_taskId].active, "Compute task inactive");
         _;
     }
 
-    modifier meetsHardwareRequirements(uint256 _runId, HardwareSpecs memory _specs) {
-        TrainingRun memory tr = trainingRuns[_runId];
-        require(_specs.gpuCount   >= tr.minGpuCount, "Insufficient GPU count");
-        require(_specs.gpuMemory  >= tr.minGpuMemory, "Insufficient GPU mem");
-        require(_specs.cpuCores   >= tr.minCpuCores, "Insufficient CPU cores");
-        require(_specs.ram        >= tr.minRam, "Insufficient RAM");
-        require(_specs.disk    >= tr.minStorage, "Insufficient storage");
+    modifier meetsHardwareRequirements(uint256 _taskId, HardwareSpecs memory _specs) {
+        ComputeTask memory ct = computeTasks[_taskId];
+        require(_specs.gpuCount   >= ct.minGpuCount, "Insufficient GPU count");
+        require(_specs.gpuMemory  >= ct.minGpuMemory, "Insufficient GPU mem");
+        require(_specs.cpuCores   >= ct.minCpuCores, "Insufficient CPU cores");
+        require(_specs.ram        >= ct.minRam, "Insufficient RAM");
+        require(_specs.disk       >= ct.minStorage, "Insufficient storage");
         _;
     }
 
@@ -112,41 +117,46 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
     function withdrawStake(uint256 _amount) external virtual onlyExistingNode(msg.sender) {}
 
     // Validation and slashing
-    function slashStake(address _miner, uint256 _amount) external virtual onlyValidator onlyExistingNode(_miner) {}
+    function slashStake(address _miner, uint256 _amount, bytes[] calldata _proof) external virtual onlyValidator onlyExistingNode(_miner) {}
 
-    // Training runs
-    function createTrainingRun(
+    // Compute tasks
+    function createComputeTask(
         uint256 _minGpuCount,
         uint256 _minGpuMemory,
         uint256 _minCpuCores,
         uint256 _minRam,
         uint256 _minStorage
-    ) external virtual onlyTrainer returns (uint256) {}
+    ) external virtual onlyTasker returns (uint256) {}
 
-    function closeTrainingRun(uint256 _runId) external virtual onlyTrainer {}
+    function closeComputeTask(uint256 _taskId) external virtual onlyTasker {}
 
-    function joinTrainingRun(uint256 _runId) 
-        external 
-        virtual 
-        onlyExistingNode(msg.sender) 
-        trainingRunActive(_runId) 
-        meetsHardwareRequirements(_runId, nodes[msg.sender].hardware) {}
+    function applyForComputeTask(uint256 _taskId)
+        external
+        virtual
+        onlyExistingNode(msg.sender)
+        computeTaskActive(_taskId)
+        meetsHardwareRequirements(_taskId, nodes[msg.sender].hardware) {}
 
-    function removeNodeFromTrainingRun(uint256 _runId, address _miner, string calldata _reason) 
-        external 
-        virtual 
-        onlyTrainer {}
+    function approveNodeForComputeTask(uint256 _taskId, address _miner)
+        external
+        virtual
+        onlyTasker {}
+
+    function removeNodeFromComputeTask(uint256 _taskId, address _miner, string calldata _reason) 
+        external
+        virtual
+        onlyTasker {}
 
     // Rewards
-    function distributeRewards(uint256 _runId, address _miner, uint256 _amount) 
+    function distributeRewards(uint256 _taskId, address _miner, uint256 _amount) 
         external 
         virtual 
-        onlyTrainer
-        trainingRunActive(_runId) {}
+        onlyTasker
+        computeTaskActive(_taskId) {}
 
     // View and utility functions for future logic
     function getActiveNodes() external view virtual returns (address[] memory);
-    function getParticipants(uint256 _runId) external view virtual returns (address[] memory);
+    function getParticipants(uint256 _taskId) external view virtual returns (address[] memory);
     function getNodeInfo(address _miner) external view virtual returns (Node memory);
-    function getTrainingRunInfo(uint256 _runId) external view virtual returns (TrainingRun memory);
+    function getComputeTaskInfo(uint256 _taskId) external view virtual returns (ComputeTask memory);
 }
