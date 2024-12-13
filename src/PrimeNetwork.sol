@@ -22,7 +22,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
     bytes32 public constant VALIDATOR_ROLE = keccak256("VALIDATOR_ROLE");
-    bytes32 public constant TASKER_ROLE   = keccak256("TASKER_ROLE");
+    bytes32 public constant TASKER_ROLE = keccak256("TASKER_ROLE");
 
     struct HardwareSpecs {
         uint256 gpuModel; // hardware identifier
@@ -31,8 +31,8 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
         uint256 totalFlops; // in TFLOPS
         uint256 cpuModel; // hardware identifier
         uint256 cpuCores;
-        uint256 ram;       // in GB
-        uint256 disk;      // in GB
+        uint256 ram; // in GB
+        uint256 disk; // in GB
         uint256 bandwidth; // in Gbps
     }
 
@@ -53,8 +53,8 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
         uint256 minStorage;
         uint256 rewardRatePerFLOPS; // is flops the right metric?
         bool active;
-        // Additional parameters such as reward distribution rates, etc.
     }
+    // Additional parameters such as reward distribution rates, etc.
 
     // Mappings
     mapping(address => Node) public nodes;
@@ -99,11 +99,11 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
 
     modifier meetsHardwareRequirements(uint256 _taskId, HardwareSpecs memory _specs) {
         ComputeTask memory ct = computeTasks[_taskId];
-        require(_specs.gpuCount   >= ct.minGpuCount, "Insufficient GPU count");
-        require(_specs.gpuMemory  >= ct.minGpuMemory, "Insufficient GPU mem");
-        require(_specs.cpuCores   >= ct.minCpuCores, "Insufficient CPU cores");
-        require(_specs.ram        >= ct.minRam, "Insufficient RAM");
-        require(_specs.disk       >= ct.minStorage, "Insufficient storage");
+        require(_specs.gpuCount >= ct.minGpuCount, "Insufficient GPU count");
+        require(_specs.gpuMemory >= ct.minGpuMemory, "Insufficient GPU mem");
+        require(_specs.cpuCores >= ct.minCpuCores, "Insufficient CPU cores");
+        require(_specs.ram >= ct.minRam, "Insufficient RAM");
+        require(_specs.disk >= ct.minStorage, "Insufficient storage");
         _;
     }
 
@@ -117,7 +117,12 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
     function withdrawStake(uint256 _amount) external virtual onlyExistingNode(msg.sender) {}
 
     // Validation and slashing
-    function slashStake(address _miner, uint256 _amount, bytes[] calldata _proof) external virtual onlyValidator onlyExistingNode(_miner) {}
+    function slashStake(address _miner, uint256 _amount, bytes[] calldata _proof)
+        external
+        virtual
+        onlyValidator
+        onlyExistingNode(_miner)
+    {}
 
     // Compute tasks
     function createComputeTask(
@@ -135,24 +140,24 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
         virtual
         onlyExistingNode(msg.sender)
         computeTaskActive(_taskId)
-        meetsHardwareRequirements(_taskId, nodes[msg.sender].hardware) {}
+        meetsHardwareRequirements(_taskId, nodes[msg.sender].hardware)
+    {}
 
-    function approveNodeForComputeTask(uint256 _taskId, address _miner)
+    function approveNodeForComputeTask(uint256 _taskId, address _miner) external virtual onlyTasker {}
+
+    function removeNodeFromComputeTask(uint256 _taskId, address _miner, string calldata _reason)
         external
         virtual
-        onlyTasker {}
-
-    function removeNodeFromComputeTask(uint256 _taskId, address _miner, string calldata _reason) 
-        external
-        virtual
-        onlyTasker {}
+        onlyTasker
+    {}
 
     // Rewards
-    function distributeRewards(uint256 _taskId, address _miner, uint256 _amount) 
-        external 
-        virtual 
+    function distributeRewards(uint256 _taskId, address _miner, uint256 _amount)
+        external
+        virtual
         onlyTasker
-        computeTaskActive(_taskId) {}
+        computeTaskActive(_taskId)
+    {}
 
     // View and utility functions for future logic
     function getActiveNodes() external view virtual returns (address[] memory);
