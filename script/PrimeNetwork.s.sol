@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Script, console} from "forge-std/Script.sol";
 import {PrimeNetwork} from "../src/PrimeNetwork.sol";
 
-contract PrimeNetworkTest is Test {
+contract PrimeNetworkScript is Script {
     PrimeNetwork primeNetwork;
 
     function setUp() public {
         //primeNetwork = new PrimeNetwork();
     }
 
-    function test_n() public {
-        console.log("PrimeNetworkTest test");
+    function run() public {
+        console.log("PrimeNetworkScript test");
     }
 }
