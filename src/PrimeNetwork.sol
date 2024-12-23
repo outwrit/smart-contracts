@@ -15,14 +15,13 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 // Key Concepts:
 // - Miners (nodes) join network with hardware specs and optional stake.
 // - Model trainers create compute tasks (subnets) with hardware requirements.
-// - Miners join/leave compute tasks. Only active participants earn rewards.
+// - Miners join/leave compute tasks. Only active ¡participants earn rewards.
 // - Validators can slash stakes for fraudulent behavior.
 // - Compute task creators can remove underperforming or byzantine nodes.
 // - Rewards schedules are to be implemented later, possibly stake/hardware dependent.
 
 abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
     bytes32 public constant VALIDATOR_ROLE = keccak256("VALIDATOR_ROLE");
-    bytes32 public constant TASKER_ROLE = keccak256("TASKER_ROLE");
 
     struct HardwareSpecs {
         uint256 gpuModel; // hardware identifier
@@ -83,7 +82,7 @@ abstract contract PrimeNetwork is AccessControl, ReentrancyGuard {
     }
 
     modifier onlyTasker() {
-        require(hasRole(TASKER_ROLE, msg.sender), "Not tasker");
+        //require(hasRole(TASKER_ROLE, msg.sender), "Not tasker");
         _;
     }
 
