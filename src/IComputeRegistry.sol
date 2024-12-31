@@ -17,8 +17,7 @@ event ComputeNodeRemoved(address provider, address nodekey);
 
 interface IComputeRegistry {
     struct ComputeNode {
-        address provider;
-        uint256 nodeId;
+        address subkey;
         string specsURI;
         uint256 benchmarkScore;
         bool isActive;
@@ -26,7 +25,6 @@ interface IComputeRegistry {
 
     struct ComputeProvider {
         address providerAddress;
-        uint256 stakeAmount;
         bool isWhitelisted;
         ComputeNode[] nodes;
     }
@@ -35,10 +33,11 @@ interface IComputeRegistry {
     function deregister(address provider) external returns (bool);
     function addComputeNode(address provider, address subkey, string calldata specsURI) external returns (uint256);
     function removeComputeNode(address provider, address subkey) external returns (bool);
-    function updateNodeURI(address subkey, string calldata specsURI) external;
-    function updateNodeStatus(address subkey, bool isActive) external;
-    function updateNodeBenchmark(address provider, uint256 nodeId, uint256 benchmarkScore) external;
+    function updateNodeURI(address provider, address subkey, string calldata specsURI) external;
+    function updateNodeStatus(address provider, address subkey, bool isActive) external;
+    function updateNodeBenchmark(address provider, address subkey, uint256 benchmarkScore) external;
     function setWhitelistStatus(address provider, bool status) external;
     function getProvider(address provider) external view returns (ComputeProvider memory);
-    function getNodes(address provider, uint256 page) external view returns (ComputeNode[] memory);
+    function getNodes(address provider, uint256 page, uint256 limit) external view returns (ComputeNode[] memory);
+    function getNode(address provider, address subkey) external view returns (ComputeNode memory);
 }

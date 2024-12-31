@@ -19,12 +19,22 @@ contract PrimeNetwork is AccessControl {
 
     uint256 stakeMinimum;
 
-    constructor(address _federator, address _validator, IERC20 _PrimeToken) {
+    constructor(
+        address _federator,
+        address _validator,
+        IERC20 _PrimeToken,
+        IComputeRegistry _computeRegistry,
+        IDomainRegistry _domainRegistry,
+        IStakeManager _stakeManager
+    ) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(FEDERATOR_ROLE, _federator);
         _grantRole(VALIDATOR_ROLE, _validator);
         stakeMinimum = 100 ether;
         PrimeToken = _PrimeToken;
+        computeRegistry = _computeRegistry;
+        domainRegistry = _domainRegistry;
+        stakeManager = _stakeManager;
     }
 
     function setFederator(address _federator) external onlyRole(FEDERATOR_ROLE) {
@@ -80,8 +90,7 @@ contract PrimeNetwork is AccessControl {
 
     function addComputeNode(address nodekey, string calldata specsURI) external {
         address provider = msg.sender;
-        uint256 nodeId = computeRegistry.addComputeNode(provider, nodekey, specsURI);
-        require(nodeId > 0, "Compute node addition failed");
+        computeRegistry.addComputeNode(provider, nodekey, specsURI);
         emit ComputeNodeAdded(provider, nodekey, specsURI);
     }
 
