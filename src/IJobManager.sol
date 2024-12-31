@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
 import "./IComputeRegistry.sol";
@@ -25,6 +25,7 @@ interface IJobManager {
         address creator;
         uint256 creationTime;
         string jobDataURI;
+        address jobValidationLogic;
         IRewardsDistributor rewardsDistributor;
         JobStatus status;
     }

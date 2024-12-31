@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
 import "./IComputeRegistry.sol";
@@ -6,10 +6,12 @@ import "./IStakeManager.sol";
 import "./IDomainRegistry.sol";
 import "./IWorkValidation.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract PrimeNetwork {
-    address public federator;
-    address public validator;
+contract PrimeNetwork is AccessControl {
+    bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");
+    bytes32 public constant VALIDATOR_ROLE = keccak256("VALIDATOR_ROLE");
+
     IComputeRegistry public computeRegistry;
     IDomainRegistry public domainRegistry;
     IStakeManager public stakeManager;
@@ -17,52 +19,41 @@ contract PrimeNetwork {
 
     uint256 stakeMinimum;
 
-    modifier onlyFederator() {
-        require(msg.sender == federator, "Only federator can call this function");
-        _;
-    }
-
-    modifier onlyFederatorOrProvider(address provider) {
-        require(msg.sender == federator || msg.sender == provider, "Only federator or provider can call this function");
-        _;
-    }
-
-    modifier onlyValidator() {
-        require(msg.sender == validator, "Only validator can call this function");
-        _;
-    }
-
-    constructor(address _federator) {
-        federator = _federator;
-        validator = address(0);
+    constructor(address _federator, address _validator, IERC20 _PrimeToken) {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(FEDERATOR_ROLE, _federator);
+        _grantRole(VALIDATOR_ROLE, _validator);
         stakeMinimum = 100 ether;
+        PrimeToken = _PrimeToken;
     }
 
-    function setFederator(address _federator) external onlyFederator {
-        federator = _federator;
+    function setFederator(address _federator) external onlyRole(FEDERATOR_ROLE) {
+        grantRole(FEDERATOR_ROLE, _federator);
+        revokeRole(FEDERATOR_ROLE, msg.sender);
     }
 
-    function setValidator(address _validator) external onlyFederator {
-        validator = _validator;
+    function setValidator(address _validator) external onlyRole(FEDERATOR_ROLE) {
+        grantRole(VALIDATOR_ROLE, _validator);
+        revokeRole(VALIDATOR_ROLE, msg.sender);
     }
 
-    function setStakeMinimum(uint256 _stakeMinimum) external onlyFederator {
+    function setStakeMinimum(uint256 _stakeMinimum) external onlyRole(FEDERATOR_ROLE) {
         stakeMinimum = _stakeMinimum;
     }
 
-    function whitelistProvider(address provider) external onlyFederator {
+    function whitelistProvider(address provider) external onlyRole(FEDERATOR_ROLE) {
         computeRegistry.setWhitelistStatus(provider, true);
         emit ProviderWhitelisted(provider);
     }
 
-    function blacklistProvider(address provider) external onlyFederator {
+    function blacklistProvider(address provider) external onlyRole(FEDERATOR_ROLE) {
         computeRegistry.setWhitelistStatus(provider, false);
         emit ProviderBlacklisted(provider);
     }
 
     function createDomain(string calldata domainName, IWorkValidation validationLogic, string calldata domainURI)
         external
-        onlyFederator
+        onlyRole(FEDERATOR_ROLE)
     {
         uint256 domainId = domainRegistry.create(domainName, validationLogic, domainURI);
         require(domainId > 0, "Domain creation failed");
@@ -79,7 +70,8 @@ contract PrimeNetwork {
         emit ProviderRegistered(provider, stake);
     }
 
-    function deregisterProvider(address provider) external onlyFederatorOrProvider(provider) {
+    function deregisterProvider(address provider) external {
+        require(hasRole(FEDERATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
         computeRegistry.deregister(provider);
         uint256 stake = stakeManager.getStake(provider);
         stakeManager.unstake(provider, stake);
@@ -93,7 +85,8 @@ contract PrimeNetwork {
         emit ComputeNodeAdded(provider, nodekey, specsURI);
     }
 
-    function removeComputeNode(address provider, address nodekey) external onlyFederatorOrProvider(provider) {
+    function removeComputeNode(address provider, address nodekey) external {
+        require(hasRole(FEDERATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
         computeRegistry.removeComputeNode(provider, nodekey);
         emit ComputeNodeRemoved(provider, nodekey);
     }
