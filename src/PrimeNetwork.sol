@@ -22,9 +22,20 @@ contract PrimeNetwork {
         _;
     }
 
+    modifier onlyFederatorOrProvider(address provider) {
+        require(msg.sender == federator || msg.sender == provider, "Only federator or provider can call this function");
+        _;
+    }
+
+    modifier onlyValidator() {
+        require(msg.sender == validator, "Only validator can call this function");
+        _;
+    }
+
     constructor(address _federator) {
         federator = _federator;
         validator = address(0);
+        stakeMinimum = 100 ether;
     }
 
     function setFederator(address _federator) external onlyFederator {
@@ -33,6 +44,10 @@ contract PrimeNetwork {
 
     function setValidator(address _validator) external onlyFederator {
         validator = _validator;
+    }
+
+    function setStakeMinimum(uint256 _stakeMinimum) external onlyFederator {
+        stakeMinimum = _stakeMinimum;
     }
 
     function whitelistProvider(address provider) external onlyFederator {
@@ -64,8 +79,7 @@ contract PrimeNetwork {
         emit ProviderRegistered(provider, stake);
     }
 
-    function deregisterProvider(address provider) external {
-        require(msg.sender == provider || msg.sender == federator, "Only provider or federator can deregister");
+    function deregisterProvider(address provider) external onlyFederatorOrProvider(provider) {
         computeRegistry.deregister(provider);
         uint256 stake = stakeManager.getStake(provider);
         stakeManager.unstake(provider, stake);
@@ -79,8 +93,7 @@ contract PrimeNetwork {
         emit ComputeNodeAdded(provider, nodekey, specsURI);
     }
 
-    function removeComputeNode(address provider, address nodekey) external {
-        require(msg.sender == provider || msg.sender == federator, "Only provider or federator can remove nodes");
+    function removeComputeNode(address provider, address nodekey) external onlyFederatorOrProvider(provider) {
         computeRegistry.removeComputeNode(provider, nodekey);
         emit ComputeNodeRemoved(provider, nodekey);
     }
