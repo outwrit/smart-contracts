@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./IComputeRegistry.sol";
-import "./IStakeManager.sol";
-import "./IDomainRegistry.sol";
-import "./IWorkValidation.sol";
+import "./interfaces/IComputeRegistry.sol";
+import "./interfaces/IStakeManager.sol";
+import "./interfaces/IDomainRegistry.sol";
+import "./interfaces/IWorkValidation.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 

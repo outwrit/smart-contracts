@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./IComputeRegistry.sol";
+import "./interfaces/IComputeRegistry.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 contract ComputeRegistry is IComputeRegistry {
