@@ -80,6 +80,7 @@ contract PrimeNetwork is AccessControl {
         bool success = computeRegistry.register(provider);
         require(success, "Provider registration failed");
         PrimeToken.transferFrom(msg.sender, address(this), stake);
+        PrimeToken.approve(address(stakeManager), stake);
         stakeManager.stake(provider, stake);
         emit ProviderRegistered(provider, stake);
     }

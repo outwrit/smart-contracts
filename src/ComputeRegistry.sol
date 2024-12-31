@@ -45,6 +45,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
     {
         ComputeProvider storage cp = providers[provider];
         ComputeNode memory cn;
+        cn.provider = provider;
         cn.specsURI = specsURI;
         cn.benchmarkScore = 0;
         cn.isActive = true;

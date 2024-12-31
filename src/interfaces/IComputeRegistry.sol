@@ -17,6 +17,7 @@ event ComputeNodeRemoved(address provider, address nodekey);
 
 interface IComputeRegistry {
     struct ComputeNode {
+        address provider;
         address subkey;
         string specsURI;
         uint256 benchmarkScore;
