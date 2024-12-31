@@ -3,17 +3,25 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IComputeRegistry.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract ComputeRegistry is IComputeRegistry {
+contract ComputeRegistry is IComputeRegistry, AccessControl {
+    bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
+
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
     mapping(address => ComputeProvider) public providers;
     EnumerableMap.AddressToUintMap private nodeSubkeyToIndex;
 
-    function register(address _provider) external returns (bool) {
-        ComputeProvider storage cp = providers[_provider];
+    constructor(address primeAdmin) {
+        _grantRole(DEFAULT_ADMIN_ROLE, primeAdmin);
+        _grantRole(PRIME_ROLE, primeAdmin);
+    }
+
+    function register(address provider) external onlyRole(PRIME_ROLE) returns (bool) {
+        ComputeProvider storage cp = providers[provider];
         if (cp.providerAddress == address(0)) {
-            cp.providerAddress = _provider;
+            cp.providerAddress = provider;
             cp.isWhitelisted = false;
             cp.nodes = new ComputeNode[](0);
             return true;
@@ -21,16 +29,20 @@ contract ComputeRegistry is IComputeRegistry {
         return false;
     }
 
-    function deregister(address _provider) external returns (bool) {
-        if (providers[_provider].providerAddress == address(0)) {
+    function deregister(address provider) external onlyRole(PRIME_ROLE) returns (bool) {
+        if (providers[provider].providerAddress == address(0)) {
             return false;
         } else {
-            delete providers[_provider];
+            delete providers[provider];
             return true;
         }
     }
 
-    function addComputeNode(address provider, address subkey, string calldata specsURI) external returns (uint256) {
+    function addComputeNode(address provider, address subkey, string calldata specsURI)
+        external
+        onlyRole(PRIME_ROLE)
+        returns (uint256)
+    {
         ComputeProvider storage cp = providers[provider];
         ComputeNode memory cn;
         cn.specsURI = specsURI;
@@ -43,7 +55,7 @@ contract ComputeRegistry is IComputeRegistry {
         return index;
     }
 
-    function removeComputeNode(address provider, address subkey) external returns (bool) {
+    function removeComputeNode(address provider, address subkey) external onlyRole(PRIME_ROLE) returns (bool) {
         ComputeProvider storage cp = providers[provider];
         uint256 index = nodeSubkeyToIndex.get(subkey);
         ComputeNode memory cn = cp.nodes[index];
@@ -61,22 +73,25 @@ contract ComputeRegistry is IComputeRegistry {
         return true;
     }
 
-    function updateNodeURI(address provider, address subkey, string calldata specsURI) external {
+    function updateNodeURI(address provider, address subkey, string calldata specsURI) external onlyRole(PRIME_ROLE) {
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.specsURI = specsURI;
     }
 
-    function updateNodeStatus(address provider, address subkey, bool isActive) external {
+    function updateNodeStatus(address provider, address subkey, bool isActive) external onlyRole(PRIME_ROLE) {
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.isActive = isActive;
     }
 
-    function updateNodeBenchmark(address provider, address subkey, uint256 benchmarkScore) external {
+    function updateNodeBenchmark(address provider, address subkey, uint256 benchmarkScore)
+        external
+        onlyRole(PRIME_ROLE)
+    {
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.benchmarkScore = benchmarkScore;
     }
 
-    function setWhitelistStatus(address provider, bool status) external {
+    function setWhitelistStatus(address provider, bool status) external onlyRole(PRIME_ROLE) {
         providers[provider].isWhitelisted = status;
     }
 

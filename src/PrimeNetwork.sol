@@ -5,6 +5,7 @@ import "./interfaces/IComputeRegistry.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IDomainRegistry.sol";
 import "./interfaces/IWorkValidation.sol";
+import "./interfaces/IJobManager.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -15,9 +16,9 @@ contract PrimeNetwork is AccessControl {
     IComputeRegistry public computeRegistry;
     IDomainRegistry public domainRegistry;
     IStakeManager public stakeManager;
-    IERC20 public PrimeToken;
+    IJobManager public jobManager;
 
-    uint256 stakeMinimum;
+    IERC20 public PrimeToken;
 
     constructor(
         address _federator,
@@ -25,16 +26,17 @@ contract PrimeNetwork is AccessControl {
         IERC20 _PrimeToken,
         IComputeRegistry _computeRegistry,
         IDomainRegistry _domainRegistry,
-        IStakeManager _stakeManager
+        IStakeManager _stakeManager,
+        IJobManager _jobManager
     ) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(FEDERATOR_ROLE, _federator);
         _grantRole(VALIDATOR_ROLE, _validator);
-        stakeMinimum = 100 ether;
         PrimeToken = _PrimeToken;
         computeRegistry = _computeRegistry;
         domainRegistry = _domainRegistry;
         stakeManager = _stakeManager;
+        jobManager = _jobManager;
     }
 
     function setFederator(address _federator) external onlyRole(FEDERATOR_ROLE) {
@@ -47,10 +49,6 @@ contract PrimeNetwork is AccessControl {
         revokeRole(VALIDATOR_ROLE, msg.sender);
     }
 
-    function setStakeMinimum(uint256 _stakeMinimum) external onlyRole(FEDERATOR_ROLE) {
-        stakeMinimum = _stakeMinimum;
-    }
-
     function whitelistProvider(address provider) external onlyRole(FEDERATOR_ROLE) {
         computeRegistry.setWhitelistStatus(provider, true);
         emit ProviderWhitelisted(provider);
@@ -61,16 +59,22 @@ contract PrimeNetwork is AccessControl {
         emit ProviderBlacklisted(provider);
     }
 
+    function setStakeMinimum(uint256 amount) external onlyRole(FEDERATOR_ROLE) {
+        stakeManager.setStakeMinimum(amount);
+        emit StakeMinimumUpdate(amount);
+    }
+
     function createDomain(string calldata domainName, IWorkValidation validationLogic, string calldata domainURI)
         external
         onlyRole(FEDERATOR_ROLE)
     {
-        uint256 domainId = domainRegistry.create(domainName, validationLogic, domainURI);
+        uint256 domainId = domainRegistry.create(domainName, jobManager, validationLogic, domainURI);
         require(domainId > 0, "Domain creation failed");
         emit DomainCreated(domainName, domainId);
     }
 
     function registerProvider(uint256 stake) external {
+        uint256 stakeMinimum = stakeManager.getStakeMinimum();
         require(stake >= stakeMinimum, "Stake amount is below minimum");
         address provider = msg.sender;
         bool success = computeRegistry.register(provider);

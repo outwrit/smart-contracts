@@ -2,26 +2,36 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IStakeManager.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract StakeManager is IStakeManager {
+contract StakeManager is IStakeManager, AccessControl {
     struct UnbondTracker {
         uint256 offset;
         Unbond[] unbonds;
     }
+
+    bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
 
     mapping(address => uint256) private _stakes;
     mapping(address => UnbondTracker) private _unbonds;
     uint256 private _totalStaked;
     uint256 private _totalUnbonding;
     uint256 private _unbondingPeriod;
+    uint256 private _stakeMinimum;
 
-    function stake(address staker, uint256 amount) external override {
+    constructor(address primeAdmin, uint256 unbondingPeriod) {
+        _unbondingPeriod = unbondingPeriod;
+        _grantRole(DEFAULT_ADMIN_ROLE, primeAdmin);
+        _grantRole(PRIME_ROLE, primeAdmin);
+    }
+
+    function stake(address staker, uint256 amount) external onlyRole(PRIME_ROLE) {
         _stakes[staker] += amount;
         _totalStaked += amount;
         emit Stake(staker, amount);
     }
 
-    function unstake(address staker, uint256 amount) external override {
+    function unstake(address staker, uint256 amount) external onlyRole(PRIME_ROLE) {
         require(_stakes[staker] >= amount, "StakeManager: insufficient balance");
         _stakes[staker] -= amount;
         _totalStaked -= amount;
@@ -51,31 +61,39 @@ contract StakeManager is IStakeManager {
         emit Withdraw(msg.sender, amount);
     }
 
-    function slash(address staker, uint256 amount, bytes calldata reason) external override {
+    function slash(address staker, uint256 amount, bytes calldata reason) external onlyRole(PRIME_ROLE) {
         require(_stakes[staker] >= amount, "StakeManager: insufficient balance");
         _stakes[staker] -= amount;
         _totalStaked -= amount;
         emit Unstake(staker, amount);
     }
 
-    function setUnbondingPeriod(uint256 period) external override {
+    function setUnbondingPeriod(uint256 period) external onlyRole(PRIME_ROLE) {
         _unbondingPeriod = period;
         emit UpdateUnbondingPeriod(period);
     }
 
-    function getStake(address staker) external view override returns (uint256) {
+    function setStakeMinimum(uint256 minimum) external onlyRole(PRIME_ROLE) {
+        _stakeMinimum = minimum;
+    }
+
+    function getStake(address staker) external view returns (uint256) {
         return _stakes[staker];
     }
 
-    function getTotalStaked() external view override returns (uint256) {
+    function getTotalStaked() external view returns (uint256) {
         return _totalStaked;
     }
 
-    function getPendingUnbonds(address staker) external view override returns (Unbond[] memory) {
+    function getPendingUnbonds(address staker) external view returns (Unbond[] memory) {
         return _unbonds[staker].unbonds;
     }
 
-    function getUnnbondingPeriod() external view override returns (uint256) {
+    function getUnnbondingPeriod() external view returns (uint256) {
         return _unbondingPeriod;
+    }
+
+    function getStakeMinimum() external view returns (uint256) {
+        return _stakeMinimum;
     }
 }

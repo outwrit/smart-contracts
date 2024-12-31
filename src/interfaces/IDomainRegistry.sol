@@ -17,10 +17,13 @@ interface IDomainRegistry {
         IJobManager jobManager;
     }
 
-    function create(string calldata name, IWorkValidation validationContract, string calldata domainParametersURI)
-        external
-        returns (uint256);
-    function get(uint256 domainId) external view returns (Domain memory);
+    function create(
+        string calldata name,
+        IJobManager jobManager,
+        IWorkValidation validationContract,
+        string calldata domainParametersURI
+    ) external returns (uint256);
     function updateValidationLogic(uint256 domainId, address validationContract) external;
     function updateParameters(uint256 domainId, string calldata domainParametersURI) external;
+    function get(uint256 domainId) external view returns (Domain memory);
 }
