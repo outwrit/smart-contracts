@@ -5,6 +5,7 @@ import "./interfaces/IJobManager.sol";
 import "./interfaces/IDomainRegistry.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 contract JobManager is IJobManager, AccessControl {
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
@@ -14,7 +15,7 @@ contract JobManager is IJobManager, AccessControl {
     IComputeRegistry public computeRegistry;
     IDomainRegistry public domainRegistry;
     IRewardsDistributor public rewardsDistributor;
-    IERC20 public paymentToken;
+    IERC20 public PrimeToken;
 
     mapping(uint256 => mapping(address => bool)) public blacklistedProviders;
     mapping(uint256 => mapping(address => bool)) public blacklistdNodes;
@@ -23,28 +24,46 @@ contract JobManager is IJobManager, AccessControl {
     mapping(uint256 => address[]) public jobNodes;
 
     constructor(
-        address primeAdmin,
+        address _primeAdmin,
         IDomainRegistry _domainRegistry,
         IRewardsDistributor _rewardsDistributor,
         IComputeRegistry _computeRegistry,
-        IERC20 _paymentToken
+        IERC20 _PrimeToken
     ) {
-        _grantRole(DEFAULT_ADMIN_ROLE, primeAdmin);
-        _grantRole(PRIME_ROLE, primeAdmin);
+        _grantRole(DEFAULT_ADMIN_ROLE, _primeAdmin);
+        _grantRole(PRIME_ROLE, _primeAdmin);
         jobIdCounter = 0;
-        paymentToken = _paymentToken;
+        PrimeToken = _PrimeToken;
         computeRegistry = _computeRegistry;
         domainRegistry = _domainRegistry;
         rewardsDistributor = _rewardsDistributor;
     }
 
-    function createJob(uint256 domainId, address creator, uint256 rewardRate, string calldata jobDataURI) external {
+    function _verifyJobInvite(
+        uint256 domainId,
+        uint256 jobId,
+        address computeManagerKey,
+        address nodekey,
+        bytes memory signature
+    ) internal view returns (bool) {
+        bytes32 messageHash = keccak256(abi.encodePacked(domainId, jobId, nodekey));
+        return SignatureChecker.isValidERC1271SignatureNow(computeManagerKey, messageHash, signature);
+    }
+
+    function createJob(
+        uint256 domainId,
+        address creator,
+        address computeManagerKey,
+        uint256 rewardRate,
+        string calldata jobDataURI
+    ) external {
         require(domainRegistry.get(domainId).domainId == domainId, "JobManager: domain does not exist");
 
         jobs[jobIdCounter] = JobInfo({
             jobId: jobIdCounter,
             domainId: domainId,
             creator: creator,
+            computeManagerKey: computeManagerKey,
             creationTime: block.timestamp,
             jobDataURI: jobDataURI,
             jobValidationLogic: address(0),
@@ -54,17 +73,6 @@ contract JobManager is IJobManager, AccessControl {
         });
 
         jobIdCounter++;
-    }
-
-    function fundJob(uint256 jobId, uint256 amount) external {
-        require(jobs[jobId].jobId == jobId, "JobManager: job does not exist");
-        require(
-            jobs[jobId].status == JobStatus.PENDING || jobs[jobId].status == JobStatus.ACTIVE,
-            "JobManager: job is not pending"
-        );
-
-        paymentToken.transferFrom(msg.sender, address(this), amount);
-        jobs[jobId].totalFunds += amount;
     }
 
     function startJob(uint256 jobId) external {
@@ -83,7 +91,7 @@ contract JobManager is IJobManager, AccessControl {
         jobs[jobId].status = JobStatus.COMPLETED;
     }
 
-    function joinJob(uint256 jobId, address provider, address[] memory nodekey) external {
+    function joinJob(uint256 jobId, address provider, address[] memory nodekey, bytes[] memory signatures) external {
         require(jobs[jobId].jobId == jobId, "JobManager: job does not exist");
         require(jobs[jobId].status == JobStatus.PENDING, "JobManager: job is not pending");
         require(!blacklistedProviders[jobId][provider], "JobManager: provider is blacklisted");
@@ -95,6 +103,13 @@ contract JobManager is IJobManager, AccessControl {
 
         jobProviders[jobId].push(provider);
         for (uint256 i = 0; i < nodekey.length; i++) {
+            require(
+                computeRegistry.getNode(provider, nodekey[i]).provider == provider, "JobManager: node does not exist"
+            );
+            require(
+                _verifyJobInvite(jobs[jobId].domainId, jobId, jobs[jobId].computeManagerKey, nodekey[i], signatures[i]),
+                "JobManager: invalid invite"
+            );
             jobNodes[jobId].push(nodekey[i]);
         }
     }

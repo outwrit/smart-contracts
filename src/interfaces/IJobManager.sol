@@ -24,6 +24,7 @@ interface IJobManager {
         uint256 jobId;
         uint256 domainId;
         address creator;
+        address computeManagerKey;
         uint256 creationTime;
         string jobDataURI;
         address jobValidationLogic;
@@ -35,11 +36,16 @@ interface IJobManager {
     // for each job for efficiency's sake rather than a whole new
     // rewards distributor contract each time
 
-    function createJob(uint256 domainId, address creator, uint256 rewardRate, string calldata jobDataURI) external;
-    function fundJob(uint256 jobId, uint256 amount) external;
+    function createJob(
+        uint256 domainId,
+        address creator,
+        address computeManagerKey,
+        uint256 rewardRate,
+        string calldata jobDataURI
+    ) external;
     function startJob(uint256 jobId) external;
     function endJob(uint256 jobId) external;
-    function joinJob(uint256 jobId, address provider, address[] memory nodekey) external;
+    function joinJob(uint256 jobId, address provider, address[] memory nodekeys, bytes[] memory signatures) external;
     function leaveJob(uint256 jobId, address provider) external;
     function updateJobURI(uint256 jobId, string calldata jobDataURI) external;
     function blacklistProvider(uint256 jobId, address provider) external;
