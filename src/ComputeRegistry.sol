@@ -38,7 +38,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         }
     }
 
-    function addComputeNode(address provider, address subkey, string calldata specsURI)
+    function addComputeNode(address provider, address subkey, uint256 computeUnits, string calldata specsURI)
         external
         onlyRole(PRIME_ROLE)
         returns (uint256)
@@ -46,6 +46,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         ComputeProvider storage cp = providers[provider];
         ComputeNode memory cn;
         cn.provider = provider;
+        cn.computeUnits = computeUnits;
         cn.specsURI = specsURI;
         cn.benchmarkScore = 0;
         cn.isActive = true;

@@ -16,7 +16,7 @@ contract DomainRegistry is IDomainRegistry, AccessControl {
 
     function create(
         string calldata name,
-        IJobManager jobManager,
+        IComputePool computePool,
         IWorkValidation validationContract,
         string calldata domainParametersURI
     ) external onlyRole(PRIME_ROLE) returns (uint256) {
@@ -25,7 +25,7 @@ contract DomainRegistry is IDomainRegistry, AccessControl {
             name: name,
             validationLogic: validationContract,
             domainParametersURI: domainParametersURI,
-            jobManager: jobManager
+            computePool: computePool
         });
 
         domains.push(domain);

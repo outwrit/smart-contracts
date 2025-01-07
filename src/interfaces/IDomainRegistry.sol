@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./IWorkValidation.sol";
-import "./IJobManager.sol";
+import "./IComputePool.sol";
 
 event DomainCreated(string domainName, uint256 domainId);
 
@@ -14,12 +14,12 @@ interface IDomainRegistry {
         string name;
         IWorkValidation validationLogic;
         string domainParametersURI;
-        IJobManager jobManager;
+        IComputePool computePool;
     }
 
     function create(
         string calldata name,
-        IJobManager jobManager,
+        IComputePool computePool,
         IWorkValidation validationContract,
         string calldata domainParametersURI
     ) external returns (uint256);

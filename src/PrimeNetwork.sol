@@ -5,7 +5,7 @@ import "./interfaces/IComputeRegistry.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IDomainRegistry.sol";
 import "./interfaces/IWorkValidation.sol";
-import "./interfaces/IJobManager.sol";
+import "./interfaces/IComputePool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -16,7 +16,7 @@ contract PrimeNetwork is AccessControl {
     IComputeRegistry public computeRegistry;
     IDomainRegistry public domainRegistry;
     IStakeManager public stakeManager;
-    IJobManager public jobManager;
+    IComputePool public computePool;
 
     IERC20 public PrimeToken;
 
@@ -27,7 +27,7 @@ contract PrimeNetwork is AccessControl {
         IComputeRegistry _computeRegistry,
         IDomainRegistry _domainRegistry,
         IStakeManager _stakeManager,
-        IJobManager _jobManager
+        IComputePool _computePool
     ) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(FEDERATOR_ROLE, _federator);
@@ -36,7 +36,7 @@ contract PrimeNetwork is AccessControl {
         computeRegistry = _computeRegistry;
         domainRegistry = _domainRegistry;
         stakeManager = _stakeManager;
-        jobManager = _jobManager;
+        computePool = _computePool;
     }
 
     function setFederator(address _federator) external onlyRole(FEDERATOR_ROLE) {
@@ -49,12 +49,12 @@ contract PrimeNetwork is AccessControl {
         revokeRole(VALIDATOR_ROLE, msg.sender);
     }
 
-    function whitelistProvider(address provider) external onlyRole(FEDERATOR_ROLE) {
+    function whitelistProvider(address provider) external onlyRole(VALIDATOR_ROLE) {
         computeRegistry.setWhitelistStatus(provider, true);
         emit ProviderWhitelisted(provider);
     }
 
-    function blacklistProvider(address provider) external onlyRole(FEDERATOR_ROLE) {
+    function blacklistProvider(address provider) external onlyRole(VALIDATOR_ROLE) {
         computeRegistry.setWhitelistStatus(provider, false);
         emit ProviderBlacklisted(provider);
     }
@@ -68,7 +68,7 @@ contract PrimeNetwork is AccessControl {
         external
         onlyRole(FEDERATOR_ROLE)
     {
-        uint256 domainId = domainRegistry.create(domainName, jobManager, validationLogic, domainURI);
+        uint256 domainId = domainRegistry.create(domainName, computePool, validationLogic, domainURI);
         require(domainId > 0, "Domain creation failed");
         emit DomainCreated(domainName, domainId);
     }
@@ -86,7 +86,7 @@ contract PrimeNetwork is AccessControl {
     }
 
     function deregisterProvider(address provider) external {
-        require(hasRole(FEDERATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
+        require(hasRole(VALIDATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
         computeRegistry.deregister(provider);
         uint256 stake = stakeManager.getStake(provider);
         stakeManager.unstake(provider, stake);
@@ -100,7 +100,7 @@ contract PrimeNetwork is AccessControl {
     }
 
     function removeComputeNode(address provider, address nodekey) external {
-        require(hasRole(FEDERATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
+        require(hasRole(VALIDATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
         computeRegistry.removeComputeNode(provider, nodekey);
         emit ComputeNodeRemoved(provider, nodekey);
     }

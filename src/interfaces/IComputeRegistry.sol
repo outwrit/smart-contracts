@@ -20,7 +20,8 @@ interface IComputeRegistry {
         address provider;
         address subkey;
         string specsURI;
-        uint256 benchmarkScore;
+        uint256 computeUnits; // H100 equivalents
+        uint256 benchmarkScore; // some fidelity metric
         bool isActive;
     }
 
@@ -32,7 +33,9 @@ interface IComputeRegistry {
 
     function register(address provider) external returns (bool);
     function deregister(address provider) external returns (bool);
-    function addComputeNode(address provider, address subkey, string calldata specsURI) external returns (uint256);
+    function addComputeNode(address provider, address subkey, uint256 computeUnits, string calldata specsURI)
+        external
+        returns (uint256);
     function removeComputeNode(address provider, address subkey) external returns (bool);
     function updateNodeURI(address provider, address subkey, string calldata specsURI) external;
     function updateNodeStatus(address provider, address subkey, bool isActive) external;
