@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
-contract ComputePoolManager is IComputePoolManager, AccessControl {
+contract ComputePool is IComputePool, AccessControl {
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
 
     mapping(uint256 => PoolInfo) public pools;
@@ -22,6 +22,8 @@ contract ComputePoolManager is IComputePoolManager, AccessControl {
 
     mapping(uint256 => address[]) public poolProviders;
     mapping(uint256 => address[]) public poolNodes;
+
+    mapping(address => WorkInterval[]) public nodeWork;
 
     constructor(
         address _primeAdmin,
@@ -57,7 +59,7 @@ contract ComputePoolManager is IComputePoolManager, AccessControl {
         uint256 rewardRate,
         string calldata poolDataURI
     ) external {
-        require(domainRegistry.get(domainId).domainId == domainId, "ComputePoolManager: domain does not exist");
+        require(domainRegistry.get(domainId).domainId == domainId, "ComputePool: domain does not exist");
 
         pools[poolIdCounter] = PoolInfo({
             poolId: poolIdCounter,
@@ -69,7 +71,7 @@ contract ComputePoolManager is IComputePoolManager, AccessControl {
             endTime: 0,
             poolDataURI: poolDataURI,
             poolValidationLogic: address(0),
-            totalFunds: 0,
+            totalCompute: 0,
             rewardRate: rewardRate,
             status: PoolStatus.PENDING
         });
@@ -78,18 +80,18 @@ contract ComputePoolManager is IComputePoolManager, AccessControl {
     }
 
     function startComputePool(uint256 poolId) external {
-        require(pools[poolId].poolId == poolId, "ComputePoolManager: pool does not exist");
-        require(pools[poolId].status == PoolStatus.PENDING, "ComputePoolManager: pool is not pending");
-        require(pools[poolId].creator == msg.sender, "ComputePoolManager: only creator can start pool");
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].status == PoolStatus.PENDING, "ComputePool: pool is not pending");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can start pool");
 
         pools[poolId].startTime = block.timestamp;
         pools[poolId].status = PoolStatus.ACTIVE;
     }
 
     function endComputePool(uint256 poolId) external {
-        require(pools[poolId].poolId == poolId, "ComputePoolManager: pool does not exist");
-        require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePoolManager: pool is not active");
-        require(pools[poolId].creator == msg.sender, "ComputePoolManager: only creator can end pool");
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: pool is not active");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can end pool");
 
         pools[poolId].endTime = block.timestamp;
         pools[poolId].status = PoolStatus.COMPLETED;
@@ -98,41 +100,66 @@ contract ComputePoolManager is IComputePoolManager, AccessControl {
     function joinComputePool(uint256 poolId, address provider, address[] memory nodekey, bytes[] memory signatures)
         external
     {
-        require(pools[poolId].poolId == poolId, "ComputePoolManager: pool does not exist");
-        require(pools[poolId].status == PoolStatus.PENDING, "ComputePoolManager: pool is not pending");
-        require(!blacklistedProviders[poolId][provider], "ComputePoolManager: provider is blacklisted");
-        require(msg.sender == provider, "ComputePoolManager: only provider can join pool");
+        require(msg.sender == provider, "ComputePool: only provider can join pool");
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].status == PoolStatus.PENDING, "ComputePool: pool is not pending");
+        require(!blacklistedProviders[poolId][provider], "ComputePool: provider is blacklisted");
+        require(computeRegistry.getWhitelistStatus(provider), "ComputePool: provider is not whitelisted");
 
         for (uint256 i = 0; i < nodekey.length; i++) {
-            require(!blacklistedNodes[poolId][nodekey[i]], "ComputePoolManager: node is blacklisted");
+            require(!blacklistedNodes[poolId][nodekey[i]], "ComputePool: node is blacklisted");
         }
 
         poolProviders[poolId].push(provider);
         for (uint256 i = 0; i < nodekey.length; i++) {
             require(
-                computeRegistry.getNode(provider, nodekey[i]).provider == provider,
-                "ComputePoolManager: node does not exist"
+                computeRegistry.getNode(provider, nodekey[i]).provider == provider, "ComputePool: node does not exist"
             );
             require(
                 _verifyPoolInvite(
                     pools[poolId].domainId, poolId, pools[poolId].computeManagerKey, nodekey[i], signatures[i]
                 ),
-                "ComputePoolManager: invalid invite"
+                "ComputePool: invalid invite"
             );
             poolNodes[poolId].push(nodekey[i]);
+            nodeWork[nodekey[i]].push(WorkInterval({poolId: poolId, joinTime: block.timestamp, leaveTime: 0}));
         }
     }
 
-    function leaveComputePool(uint256 poolId, address provider) external {
-        require(pools[poolId].poolId == poolId, "ComputePoolManager: pool does not exist");
-        require(pools[poolId].status != PoolStatus.COMPLETED, "ComputePoolManager: pool is completed");
-        require(msg.sender == provider, "ComputePoolManager: only provider can leave pool");
+    function leaveComputePool(uint256 poolId, address provider, address nodekey) external {
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].status != PoolStatus.COMPLETED, "ComputePool: pool is completed");
+        require(msg.sender == provider, "ComputePool: only provider can leave pool");
 
-        for (uint256 i = 0; i < poolProviders[poolId].length; i++) {
-            if (poolProviders[poolId][i] == provider) {
-                poolProviders[poolId][i] = poolProviders[poolId][poolProviders[poolId].length - 1];
-                poolProviders[poolId].pop();
-                break;
+        if (nodekey == address(0)) {
+            for (uint256 i = 0; i < poolProviders[poolId].length; i++) {
+                if (poolProviders[poolId][i] == provider) {
+                    poolProviders[poolId][i] = poolProviders[poolId][poolProviders[poolId].length - 1];
+                    poolProviders[poolId].pop();
+                    break;
+                }
+            }
+
+            for (uint256 i = 0; i < poolNodes[poolId].length; i++) {
+                if (computeRegistry.getNode(provider, poolNodes[poolId][i]).provider == provider) {
+                    address leavingNode = poolNodes[poolId][i];
+                    poolNodes[poolId][i] = poolNodes[poolId][poolNodes[poolId].length - 1];
+                    poolNodes[poolId].pop();
+                    nodeWork[leavingNode][nodeWork[leavingNode].length - 1].leaveTime = block.timestamp;
+                    break;
+                }
+            }
+        } else {
+            for (uint256 i = 0; i < poolNodes[poolId].length; i++) {
+                if (computeRegistry.getNode(provider, poolNodes[poolId][i]).provider == provider) {
+                    address leavingNode = poolNodes[poolId][i];
+                    if (nodekey == leavingNode) {
+                        poolNodes[poolId][i] = poolNodes[poolId][poolNodes[poolId].length - 1];
+                        poolNodes[poolId].pop();
+                        nodeWork[leavingNode][nodeWork[leavingNode].length - 1].leaveTime = block.timestamp;
+                        break;
+                    }
+                }
             }
         }
     }
@@ -141,15 +168,15 @@ contract ComputePoolManager is IComputePoolManager, AccessControl {
     // Management functions
     //
     function updateComputePoolURI(uint256 poolId, string calldata poolDataURI) external {
-        require(pools[poolId].poolId == poolId, "ComputePoolManager: pool does not exist");
-        require(pools[poolId].creator == msg.sender, "ComputePoolManager: only creator can update pool URI");
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can update pool URI");
 
         pools[poolId].poolDataURI = poolDataURI;
     }
 
     function blacklistProvider(uint256 poolId, address provider) external {
-        require(pools[poolId].poolId == poolId, "ComputePoolManager: pool does not exist");
-        require(pools[poolId].creator == msg.sender, "ComputePoolManager: only creator can blacklist provider");
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist provider");
 
         for (uint256 i = 0; i < poolProviders[poolId].length; i++) {
             if (poolProviders[poolId][i] == provider) {
@@ -171,8 +198,8 @@ contract ComputePoolManager is IComputePoolManager, AccessControl {
     }
 
     function blacklistNode(uint256 poolId, address nodekey) external {
-        require(pools[poolId].poolId == poolId, "ComputePoolManager: pool does not exist");
-        require(pools[poolId].creator == msg.sender, "ComputePoolManager: only creator can blacklist node");
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist node");
 
         for (uint256 i = 0; i < poolNodes[poolId].length; i++) {
             if (poolNodes[poolId][i] == nodekey) {
@@ -198,5 +225,9 @@ contract ComputePoolManager is IComputePoolManager, AccessControl {
 
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory) {
         return poolNodes[poolId];
+    }
+
+    function getNodeWork(address nodekey) external view returns (WorkInterval[] memory) {
+        return nodeWork[nodekey];
     }
 }

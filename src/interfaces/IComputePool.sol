@@ -30,13 +30,16 @@ interface IComputePool {
         uint256 endTime;
         string poolDataURI;
         address poolValidationLogic;
-        uint256 totalFunds;
+        uint256 totalCompute;
         uint256 rewardRate;
         PoolStatus status;
     }
-    // there should probably be a rewards delegate stub deployed
-    // for each pool for efficiency's sake rather than a whole new
-    // rewards distributor contract each time
+
+    struct WorkInterval {
+        uint256 poolId;
+        uint256 joinTime;
+        uint256 leaveTime;
+    }
 
     function createComputePool(
         uint256 domainId,
@@ -49,11 +52,12 @@ interface IComputePool {
     function endComputePool(uint256 poolId) external;
     function joinComputePool(uint256 poolId, address provider, address[] memory nodekeys, bytes[] memory signatures)
         external;
-    function leaveComputePool(uint256 poolId, address provider) external;
+    function leaveComputePool(uint256 poolId, address provider, address nodekey) external;
     function updateComputePoolURI(uint256 poolId, string calldata poolDataURI) external;
     function blacklistProvider(uint256 poolId, address provider) external;
     function blacklistNode(uint256 poolId, address nodekey) external;
     function getComputePool(uint256 poolId) external view returns (PoolInfo memory);
     function getComputePoolProviders(uint256 poolId) external view returns (address[] memory);
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory);
+    function getNodeWork(address nodekey) external view returns (WorkInterval[] memory);
 }

@@ -41,6 +41,7 @@ interface IComputeRegistry {
     function updateNodeStatus(address provider, address subkey, bool isActive) external;
     function updateNodeBenchmark(address provider, address subkey, uint256 benchmarkScore) external;
     function setWhitelistStatus(address provider, bool status) external;
+    function getWhitelistStatus(address provider) external view returns (bool);
     function getProvider(address provider) external view returns (ComputeProvider memory);
     function getNodes(address provider, uint256 page, uint256 limit) external view returns (ComputeNode[] memory);
     function getNode(address provider, address subkey) external view returns (ComputeNode memory);

@@ -97,6 +97,10 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         providers[provider].isWhitelisted = status;
     }
 
+    function getWhitelistStatus(address provider) external view returns (bool) {
+        return providers[provider].isWhitelisted;
+    }
+
     function getProvider(address provider) external view returns (ComputeProvider memory) {
         return providers[provider];
     }
