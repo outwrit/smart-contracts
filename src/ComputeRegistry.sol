@@ -28,6 +28,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         if (cp.providerAddress == address(0)) {
             cp.providerAddress = provider;
             cp.isWhitelisted = false;
+            cp.activeNodes = 0;
             cp.nodes = new ComputeNode[](0);
             return true;
         }
@@ -51,7 +52,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         ComputeProvider storage cp = providers[provider];
         ComputeNode memory cn;
         cn.provider = provider;
-        cn.computeUnits = computeUnits;
+        cn.computeUnits = uint32(computeUnits);
         cn.specsURI = specsURI;
         cn.benchmarkScore = 0;
         cn.isActive = true;
@@ -70,6 +71,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         if (cn.subkey != subkey) {
             return false;
         }
+        require(cn.isActive == false, "ComputeRegistry: node must be inactive to remove");
         // swap node we're removing with last node
         cp.nodes[index] = cp.nodes[cp.nodes.length - 1];
         // update index of the node we swapped
@@ -88,6 +90,11 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
     function updateNodeStatus(address provider, address subkey, bool isActive) external onlyRole(COMPUTE_POOL_ROLE) {
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.isActive = isActive;
+        if (isActive) {
+            providers[provider].activeNodes++;
+        } else {
+            providers[provider].activeNodes--;
+        }
     }
 
     function updateNodeBenchmark(address provider, address subkey, uint256 benchmarkScore)
@@ -95,7 +102,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         onlyRole(PRIME_ROLE)
     {
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
-        cn.benchmarkScore = benchmarkScore;
+        cn.benchmarkScore = uint32(benchmarkScore);
     }
 
     function setWhitelistStatus(address provider, bool status) external onlyRole(PRIME_ROLE) {

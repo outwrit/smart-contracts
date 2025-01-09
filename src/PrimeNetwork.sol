@@ -21,23 +21,23 @@ contract PrimeNetwork is AccessControl {
 
     IERC20 public PrimeToken;
 
-    constructor(
-        address _federator,
-        address _validator,
-        IERC20 _PrimeToken,
-        IComputeRegistry _computeRegistry,
-        IDomainRegistry _domainRegistry,
-        IStakeManager _stakeManager,
-        IComputePool _computePool
-    ) {
+    constructor(address _federator, address _validator, IERC20 _PrimeToken) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(FEDERATOR_ROLE, _federator);
         _grantRole(VALIDATOR_ROLE, _validator);
         PrimeToken = _PrimeToken;
-        computeRegistry = _computeRegistry;
-        domainRegistry = _domainRegistry;
-        stakeManager = _stakeManager;
-        computePool = _computePool;
+    }
+
+    function setModuleAddresses(
+        address _computeRegistry,
+        address _domainRegistry,
+        address _stakeManager,
+        address _computePool
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        computeRegistry = IComputeRegistry(_computeRegistry);
+        domainRegistry = IDomainRegistry(_domainRegistry);
+        stakeManager = IStakeManager(_stakeManager);
+        computePool = IComputePool(_computePool);
     }
 
     function setFederator(address _federator) external onlyRole(FEDERATOR_ROLE) {
@@ -92,7 +92,7 @@ contract PrimeNetwork is AccessControl {
 
     function deregisterProvider(address provider) external {
         require(hasRole(VALIDATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
-        require(computePool.getProviderActiveNodes(provider) == 0, "Provider has active nodes");
+        require(computeRegistry.getProvider(provider).activeNodes == 0, "Provider has active nodes");
         computeRegistry.deregister(provider);
         uint256 stake = stakeManager.getStake(provider);
         stakeManager.unstake(provider, stake);

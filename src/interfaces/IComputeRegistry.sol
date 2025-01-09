@@ -20,8 +20,8 @@ interface IComputeRegistry {
         address provider;
         address subkey;
         string specsURI;
-        uint256 computeUnits; // H100 equivalents
-        uint256 benchmarkScore; // some fidelity metric
+        uint32 computeUnits; // H100 equivalents
+        uint32 benchmarkScore; // some fidelity metric
         bool isActive;
         bool isValidated;
     }
@@ -29,6 +29,7 @@ interface IComputeRegistry {
     struct ComputeProvider {
         address providerAddress;
         bool isWhitelisted;
+        uint32 activeNodes;
         ComputeNode[] nodes;
     }
 

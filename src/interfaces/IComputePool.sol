@@ -58,5 +58,5 @@ interface IComputePool {
     function getComputePoolProviders(uint256 poolId) external view returns (address[] memory);
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory);
     function getNodeWork(uint256 poolId, address nodekey) external view returns (WorkInterval[] memory);
-    function getProviderActiveNodes(address provider) external view returns (uint256);
+    function getProviderActiveNodesInPool(uint256 poolId, address provider) external view returns (uint256);
 }
