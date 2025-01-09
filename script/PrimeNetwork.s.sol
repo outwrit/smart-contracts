@@ -11,7 +11,7 @@ contract PrimeNetworkScript is Script {
         //primeNetwork = new PrimeNetwork();
     }
 
-    function run() public {
+    function run() public pure {
         console.log("PrimeNetworkScript test");
     }
 }

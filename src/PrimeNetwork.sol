@@ -8,6 +8,7 @@ import "./interfaces/IWorkValidation.sol";
 import "./interfaces/IComputePool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 contract PrimeNetwork is AccessControl {
     bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");
@@ -93,9 +94,12 @@ contract PrimeNetwork is AccessControl {
         emit ProviderDeregistered(provider);
     }
 
-    function addComputeNode(address nodekey, string calldata specsURI) external {
+    function addComputeNode(address nodekey, string calldata specsURI, uint256 computeUnits, bytes memory signature)
+        external
+    {
         address provider = msg.sender;
-        computeRegistry.addComputeNode(provider, nodekey, specsURI);
+        require(_verifyNodekeySignature(provider, nodekey, signature), "Invalid signature");
+        computeRegistry.addComputeNode(provider, nodekey, computeUnits, specsURI);
         emit ComputeNodeAdded(provider, nodekey, specsURI);
     }
 
@@ -103,5 +107,14 @@ contract PrimeNetwork is AccessControl {
         require(hasRole(VALIDATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
         computeRegistry.removeComputeNode(provider, nodekey);
         emit ComputeNodeRemoved(provider, nodekey);
+    }
+
+    function _verifyNodekeySignature(address provider, address nodekey, bytes memory signature)
+        internal
+        view
+        returns (bool)
+    {
+        bytes32 messageHash = keccak256(abi.encodePacked(provider, nodekey));
+        return SignatureChecker.isValidERC1271SignatureNow(nodekey, messageHash, signature);
     }
 }

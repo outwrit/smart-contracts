@@ -31,7 +31,6 @@ interface IComputePool {
         string poolDataURI;
         address poolValidationLogic;
         uint256 totalCompute;
-        uint256 rewardRate;
         PoolStatus status;
     }
 
@@ -45,7 +44,6 @@ interface IComputePool {
         uint256 domainId,
         address creator,
         address computeManagerKey,
-        uint256 rewardRate,
         string calldata poolDataURI
     ) external;
     function startComputePool(uint256 poolId) external;
@@ -59,5 +57,5 @@ interface IComputePool {
     function getComputePool(uint256 poolId) external view returns (PoolInfo memory);
     function getComputePoolProviders(uint256 poolId) external view returns (address[] memory);
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory);
-    function getNodeWork(address nodekey) external view returns (WorkInterval[] memory);
+    function getNodeWork(uint256 poolId, address nodekey) external view returns (WorkInterval[] memory);
 }

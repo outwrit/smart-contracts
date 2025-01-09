@@ -11,7 +11,7 @@ contract PrimeNetworkTest is Test {
         //primeNetwork = new PrimeNetwork();
     }
 
-    function test_n() public {
+    function test_n() public pure {
         console.log("PrimeNetworkTest test");
     }
 }
