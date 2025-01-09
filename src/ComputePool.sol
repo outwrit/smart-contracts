@@ -29,6 +29,8 @@ contract ComputePool is IComputePool, AccessControl {
     mapping(uint256 => EnumerableSet.AddressSet) private _blacklistedProviders;
     mapping(uint256 => EnumerableSet.AddressSet) private _blacklistedNodes;
 
+    mapping(address => uint256) public providerActiveNodes;
+
     constructor(
         address _primeAdmin,
         IDomainRegistry _domainRegistry,
@@ -116,6 +118,7 @@ contract ComputePool is IComputePool, AccessControl {
         for (uint256 i = 0; i < nodekey.length; i++) {
             IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodekey[i]);
             require(node.provider == provider, "ComputePool: node does not exist");
+            require(computeRegistry.getNodeValidationStatus(provider, nodekey[i]), "ComputePool: node is not validated");
             require(
                 _verifyPoolInvite(
                     pools[poolId].domainId, poolId, pools[poolId].computeManagerKey, nodekey[i], signatures[i]
@@ -125,6 +128,8 @@ contract ComputePool is IComputePool, AccessControl {
             _poolNodes[poolId].add(nodekey[i]);
             _addJoinTime(poolId, nodekey[i]);
             pools[poolId].totalCompute += node.computeUnits;
+            providerActiveNodes[provider]++;
+            computeRegistry.updateNodeStatus(provider, nodekey[i], true);
         }
     }
 
@@ -145,6 +150,8 @@ contract ComputePool is IComputePool, AccessControl {
                     // Mark last interval's leaveTime
                     _updateLeaveTime(poolId, nodekey);
                     pools[poolId].totalCompute -= node.computeUnits;
+                    providerActiveNodes[provider]--;
+                    computeRegistry.updateNodeStatus(provider, nodes[i], false);
                 }
                 unchecked {
                     ++i;
@@ -157,6 +164,8 @@ contract ComputePool is IComputePool, AccessControl {
                 if (_poolNodes[poolId].remove(nodekey)) {
                     _updateLeaveTime(poolId, nodekey);
                     pools[poolId].totalCompute -= node.computeUnits;
+                    providerActiveNodes[provider]--;
+                    computeRegistry.updateNodeStatus(provider, nodekey, false);
                 }
             }
         }
@@ -188,6 +197,8 @@ contract ComputePool is IComputePool, AccessControl {
                 // Mark last interval's leaveTime
                 _updateLeaveTime(poolId, nodes[i]);
                 pools[poolId].totalCompute -= node.computeUnits;
+                providerActiveNodes[provider]--;
+                computeRegistry.updateNodeStatus(provider, nodes[i], false);
             }
             unchecked {
                 ++i;
@@ -207,6 +218,8 @@ contract ComputePool is IComputePool, AccessControl {
         _updateLeaveTime(poolId, nodekey);
         IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(msg.sender, nodekey);
         pools[poolId].totalCompute -= node.computeUnits;
+        providerActiveNodes[node.provider]--;
+        computeRegistry.updateNodeStatus(msg.sender, nodekey, false);
     }
 
     //
@@ -226,6 +239,10 @@ contract ComputePool is IComputePool, AccessControl {
 
     function getNodeWork(uint256 poolId, address nodekey) external view returns (WorkInterval[] memory) {
         return nodeWork[poolId][nodekey];
+    }
+
+    function getProviderActiveNodes(address provider) external view returns (uint256) {
+        return providerActiveNodes[provider];
     }
 
     function _updateLeaveTime(uint256 poolId, address nodekey) private {

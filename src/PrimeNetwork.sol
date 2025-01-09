@@ -60,6 +60,10 @@ contract PrimeNetwork is AccessControl {
         emit ProviderBlacklisted(provider);
     }
 
+    function validateNode(address provider, address nodekey) external onlyRole(VALIDATOR_ROLE) {
+        computeRegistry.setNodeValidationStatus(provider, nodekey, true);
+    }
+
     function setStakeMinimum(uint256 amount) external onlyRole(FEDERATOR_ROLE) {
         stakeManager.setStakeMinimum(amount);
         emit StakeMinimumUpdate(amount);
@@ -88,6 +92,7 @@ contract PrimeNetwork is AccessControl {
 
     function deregisterProvider(address provider) external {
         require(hasRole(VALIDATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
+        require(computePool.getProviderActiveNodes(provider) == 0, "Provider has active nodes");
         computeRegistry.deregister(provider);
         uint256 stake = stakeManager.getStake(provider);
         stakeManager.unstake(provider, stake);

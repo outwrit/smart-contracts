@@ -23,6 +23,7 @@ interface IComputeRegistry {
         uint256 computeUnits; // H100 equivalents
         uint256 benchmarkScore; // some fidelity metric
         bool isActive;
+        bool isValidated;
     }
 
     struct ComputeProvider {
@@ -42,6 +43,8 @@ interface IComputeRegistry {
     function updateNodeBenchmark(address provider, address subkey, uint256 benchmarkScore) external;
     function setWhitelistStatus(address provider, bool status) external;
     function getWhitelistStatus(address provider) external view returns (bool);
+    function setNodeValidationStatus(address provider, address subkey, bool status) external;
+    function getNodeValidationStatus(address provider, address subkey) external returns (bool);
     function getProvider(address provider) external view returns (ComputeProvider memory);
     function getNodes(address provider, uint256 page, uint256 limit) external view returns (ComputeNode[] memory);
     function getNode(address provider, address subkey) external view returns (ComputeNode memory);

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract ComputeRegistry is IComputeRegistry, AccessControl {
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
+    bytes32 public constant COMPUTE_POOL_ROLE = keccak256("COMPUTE_POOL_ROLE");
 
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
@@ -16,6 +17,10 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
     constructor(address primeAdmin) {
         _grantRole(DEFAULT_ADMIN_ROLE, primeAdmin);
         _grantRole(PRIME_ROLE, primeAdmin);
+    }
+
+    function setComputePool(address computePool) external onlyRole(PRIME_ROLE) {
+        _grantRole(COMPUTE_POOL_ROLE, computePool);
     }
 
     function register(address provider) external onlyRole(PRIME_ROLE) returns (bool) {
@@ -80,7 +85,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         cn.specsURI = specsURI;
     }
 
-    function updateNodeStatus(address provider, address subkey, bool isActive) external onlyRole(PRIME_ROLE) {
+    function updateNodeStatus(address provider, address subkey, bool isActive) external onlyRole(COMPUTE_POOL_ROLE) {
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.isActive = isActive;
     }
@@ -99,6 +104,14 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
 
     function getWhitelistStatus(address provider) external view returns (bool) {
         return providers[provider].isWhitelisted;
+    }
+
+    function setNodeValidationStatus(address provider, address subkey, bool status) external onlyRole(PRIME_ROLE) {
+        providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].isValidated = status;
+    }
+
+    function getNodeValidationStatus(address provider, address subkey) external view returns (bool) {
+        return providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].isValidated;
     }
 
     function getProvider(address provider) external view returns (ComputeProvider memory) {
