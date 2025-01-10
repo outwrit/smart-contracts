@@ -105,7 +105,7 @@ contract ComputePool is IComputePool, AccessControl {
     {
         require(msg.sender == provider, "ComputePool: only provider can join pool");
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
-        require(pools[poolId].status == PoolStatus.PENDING, "ComputePool: pool is not pending");
+        require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: pool is not active");
         require(!_blacklistedProviders[poolId].contains(provider), "ComputePool: provider is blacklisted");
         require(computeRegistry.getWhitelistStatus(provider), "ComputePool: provider is not whitelisted");
 
