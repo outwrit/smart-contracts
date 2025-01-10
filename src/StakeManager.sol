@@ -95,7 +95,7 @@ contract StakeManager is IStakeManager, AccessControl {
         return _unbonds[staker].unbonds;
     }
 
-    function getUnnbondingPeriod() external view returns (uint256) {
+    function getUnbondingPeriod() external view returns (uint256) {
         return _unbondingPeriod;
     }
 
