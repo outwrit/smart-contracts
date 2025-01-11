@@ -8,8 +8,10 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract ComputePool is IComputePool, AccessControl {
+    using MessageHashUtils for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
@@ -51,22 +53,23 @@ contract ComputePool is IComputePool, AccessControl {
         address nodekey,
         bytes memory signature
     ) internal view returns (bool) {
-        bytes32 messageHash = keccak256(abi.encodePacked(domainId, poolId, nodekey));
-        return SignatureChecker.isValidERC1271SignatureNow(computeManagerKey, messageHash, signature);
+        bytes32 messageHash = keccak256(abi.encodePacked(domainId, poolId, nodekey)).toEthSignedMessageHash();
+        return SignatureChecker.isValidSignatureNow(computeManagerKey, messageHash, signature);
     }
 
     function createComputePool(
         uint256 domainId,
-        address creator,
         address computeManagerKey,
+        string calldata poolName,
         string calldata poolDataURI
-    ) external {
+    ) external returns (uint256) {
         require(domainRegistry.get(domainId).domainId == domainId, "ComputePool: domain does not exist");
 
         pools[poolIdCounter] = PoolInfo({
             poolId: poolIdCounter,
             domainId: domainId,
-            creator: creator,
+            poolName: poolName,
+            creator: msg.sender,
             computeManagerKey: computeManagerKey,
             creationTime: block.timestamp,
             startTime: 0,
@@ -80,6 +83,8 @@ contract ComputePool is IComputePool, AccessControl {
         rewardsDistributor = new RewardsDistributor(IComputePool(address(this)), computeRegistry, poolIdCounter);
 
         poolIdCounter++;
+
+        return poolIdCounter - 1;
     }
 
     function startComputePool(uint256 poolId) external {

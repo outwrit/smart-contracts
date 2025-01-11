@@ -59,9 +59,9 @@ contract StakeManager is IStakeManager, AccessControl {
                 break;
             }
         }
-        require(_stakes[msg.sender] >= amount, "StakeManager: insufficient balance");
-        _stakes[msg.sender] -= amount;
-        _totalStaked -= amount;
+        if (amount == 0) {
+            revert("StakeManager: no funds to withdraw");
+        }
         PrimeToken.transfer(msg.sender, amount);
         emit Withdraw(msg.sender, amount);
     }
@@ -71,6 +71,7 @@ contract StakeManager is IStakeManager, AccessControl {
         reason.length == 0; // silence warning
         _stakes[staker] -= amount;
         _totalStaked -= amount;
+        PrimeToken.transfer(msg.sender, amount);
         emit Unstake(staker, amount);
     }
 

@@ -23,6 +23,7 @@ interface IComputePool {
     struct PoolInfo {
         uint256 poolId;
         uint256 domainId;
+        string poolName;
         address creator;
         address computeManagerKey;
         uint256 creationTime;
@@ -42,10 +43,10 @@ interface IComputePool {
 
     function createComputePool(
         uint256 domainId,
-        address creator,
         address computeManagerKey,
+        string calldata poolName,
         string calldata poolDataURI
-    ) external;
+    ) external returns (uint256);
     function startComputePool(uint256 poolId) external;
     function endComputePool(uint256 poolId) external;
     function joinComputePool(uint256 poolId, address provider, address[] memory nodekeys, bytes[] memory signatures)

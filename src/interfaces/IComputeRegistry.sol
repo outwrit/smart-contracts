@@ -33,6 +33,7 @@ interface IComputeRegistry {
         ComputeNode[] nodes;
     }
 
+    function setComputePool(address computePool) external;
     function register(address provider) external returns (bool);
     function deregister(address provider) external returns (bool);
     function addComputeNode(address provider, address subkey, uint256 computeUnits, string calldata specsURI)

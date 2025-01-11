@@ -9,8 +9,11 @@ import "./interfaces/IComputePool.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract PrimeNetwork is AccessControl {
+    using MessageHashUtils for bytes32;
+
     bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");
     bytes32 public constant VALIDATOR_ROLE = keccak256("VALIDATOR_ROLE");
 
@@ -38,6 +41,7 @@ contract PrimeNetwork is AccessControl {
         domainRegistry = IDomainRegistry(_domainRegistry);
         stakeManager = IStakeManager(_stakeManager);
         computePool = IComputePool(_computePool);
+        computeRegistry.setComputePool(address(computePool));
     }
 
     function setFederator(address _federator) external onlyRole(FEDERATOR_ROLE) {
@@ -64,6 +68,10 @@ contract PrimeNetwork is AccessControl {
         computeRegistry.setNodeValidationStatus(provider, nodekey, true);
     }
 
+    function invalidateNode(address provider, address nodekey) external onlyRole(VALIDATOR_ROLE) {
+        computeRegistry.setNodeValidationStatus(provider, nodekey, false);
+    }
+
     function setStakeMinimum(uint256 amount) external onlyRole(FEDERATOR_ROLE) {
         stakeManager.setStakeMinimum(amount);
         emit StakeMinimumUpdate(amount);
@@ -74,7 +82,6 @@ contract PrimeNetwork is AccessControl {
         onlyRole(FEDERATOR_ROLE)
     {
         uint256 domainId = domainRegistry.create(domainName, computePool, validationLogic, domainURI);
-        require(domainId > 0, "Domain creation failed");
         emit DomainCreated(domainName, domainId);
     }
 
@@ -103,6 +110,8 @@ contract PrimeNetwork is AccessControl {
         external
     {
         address provider = msg.sender;
+        // check provider exists
+        require(computeRegistry.getProvider(provider).providerAddress == provider, "Provider not registered");
         require(_verifyNodekeySignature(provider, nodekey, signature), "Invalid signature");
         computeRegistry.addComputeNode(provider, nodekey, computeUnits, specsURI);
         emit ComputeNodeAdded(provider, nodekey, specsURI);
@@ -119,7 +128,7 @@ contract PrimeNetwork is AccessControl {
         view
         returns (bool)
     {
-        bytes32 messageHash = keccak256(abi.encodePacked(provider, nodekey));
-        return SignatureChecker.isValidERC1271SignatureNow(nodekey, messageHash, signature);
+        bytes32 messageHash = keccak256(abi.encodePacked(provider, nodekey)).toEthSignedMessageHash();
+        return SignatureChecker.isValidSignatureNow(nodekey, messageHash, signature);
     }
 }
