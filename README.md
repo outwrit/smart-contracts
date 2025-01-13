@@ -99,7 +99,7 @@ sequenceDiagram
     participant SM as StakeManager
     participant DR as DomainRegistry
     participant CP as ComputePool
-    participant RD as RewardsDistrubutor
+    participant RD as RewardsDistributor
 
     Note over F: (1) Federator sets up modules
     F->>PN: setModuleAddresses(CR, DR, SM, CP)
@@ -126,16 +126,24 @@ sequenceDiagram
     PC->>CP: createComputePool(domainId, managerKey, poolName, poolDataURI)
     CP->>CP: poolId = <new>
     PC->>CP: startComputePool(poolId)
+    CP->>RD: <new> distributor <br /> (contract creation)
     PC->>P: signInvite(domainId, poolId, nodekey) <br /> (offchain message)
     P->>CP: joinComputePool(poolId, provider, [nodeKey], [signatureInvite])
-    CP->>CR: updateNodeStatus(provider, nodeKey, true)
+    CP->>CR: updateNodeStatus(provider, nodeKey, true) (set active)
 
-    Note over P: (7) Provider leaves the pool (optional)
+    Note over P: (7) Provider removes node from the pool (optional)
     P->>CP: leaveComputePool(poolId, provider, nodeKey)
-    CP->>CR: updateNodeStatus(provider, nodeKey, false)
+    CP->>CR: updateNodeStatus(provider, nodeKey, false) (set inactive)
 
     Note over P: (8) Provider claims rewards for contribution to compute
     P->>RD: claimRewards()
+
+    Note over P: (9) Once there's no active nodes, <br /> provider can deregister to remove stake
+    P->>PN: deregister()
+    PN->>SM: unstake(provider)
+
+    Note over P: (10) After unbonding period, provider can withdraw stake
+    P->>SM: withdraw()
 ```
 
 ---
