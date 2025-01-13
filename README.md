@@ -93,26 +93,26 @@ sequenceDiagram
     participant F as Federator
     participant V as Validator
     participant P as Provider
+    participant PC as PoolCreator
     participant PN as PrimeNetwork
     participant CR as ComputeRegistry
     participant SM as StakeManager
     participant DR as DomainRegistry
     participant CP as ComputePool
-    participant AI as AIToken
+    participant RD as RewardsDistrubutor
 
     Note over F: (1) Federator sets up modules
     F->>PN: setModuleAddresses(CR, DR, SM, CP)
     F->>PN: setStakeMinimum(minStake)
 
     Note over P: (2) Provider registers
-    P->>AI: approve(PrimeNetwork, stakeAmount)
     P->>PN: registerProvider(stakeAmount)
     PN->>CR: register(provider)
     PN->>SM: stake(provider, stakeAmount)
 
     Note over P: (3) Provider adds compute node
     P->>PN: addComputeNode(nodeKey, specsURI, computeUnits, signature)
-    PN->>CR: addComputeNode(provider, nodeKey, computeUnits, specsURI)
+    PN->>CR: addComputeNode(...)
 
     Note over V: (4) Validator whitelists & validates
     V->>PN: whitelistProvider(provider)
@@ -123,15 +123,19 @@ sequenceDiagram
     PN->>DR: create(...)
 
     Note over P: (6) Pool creation & join
-    P->>CP: createComputePool(domainId, managerKey, poolName, poolDataURI)
+    PC->>CP: createComputePool(domainId, managerKey, poolName, poolDataURI)
     CP->>CP: poolId = <new>
-    P->>CP: startComputePool(poolId)
+    PC->>CP: startComputePool(poolId)
+    PC->>P: signInvite(domainId, poolId, nodekey) <br /> (offchain message)
     P->>CP: joinComputePool(poolId, provider, [nodeKey], [signatureInvite])
     CP->>CR: updateNodeStatus(provider, nodeKey, true)
 
-    Note over P: (7) Provider leaves the pool
+    Note over P: (7) Provider leaves the pool (optional)
     P->>CP: leaveComputePool(poolId, provider, nodeKey)
     CP->>CR: updateNodeStatus(provider, nodeKey, false)
+
+    Note over P: (8) Provider claims rewards for contribution to compute
+    P->>RD: claimRewards()
 ```
 
 ---
