@@ -21,7 +21,7 @@ contract ComputePool is IComputePool, AccessControl {
     IComputeRegistry public computeRegistry;
     IDomainRegistry public domainRegistry;
     RewardsDistributor public rewardsDistributor;
-    IERC20 public PrimeToken;
+    IERC20 public AIToken;
 
     mapping(uint256 => mapping(address => WorkInterval[])) public nodeWork;
     mapping(uint256 => mapping(address => uint256)) public providerActiveNodes;
@@ -36,12 +36,12 @@ contract ComputePool is IComputePool, AccessControl {
         address _primeAdmin,
         IDomainRegistry _domainRegistry,
         IComputeRegistry _computeRegistry,
-        IERC20 _PrimeToken
+        IERC20 _AIToken
     ) {
         _grantRole(DEFAULT_ADMIN_ROLE, _primeAdmin);
         _grantRole(PRIME_ROLE, _primeAdmin);
         poolIdCounter = 0;
-        PrimeToken = _PrimeToken;
+        AIToken = _AIToken;
         computeRegistry = _computeRegistry;
         domainRegistry = _domainRegistry;
     }

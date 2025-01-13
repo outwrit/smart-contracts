@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
 import {PrimeNetwork} from "../src/PrimeNetwork.sol";
-import {PrimeIntellectToken} from "../src/PrimeIntellectToken.sol";
+import {AIToken} from "../src/AIToken.sol";
 import {ComputeRegistry} from "../src/ComputeRegistry.sol";
 import {ComputePool} from "../src/ComputePool.sol";
 import {StakeManager} from "../src/StakeManager.sol";
@@ -36,7 +36,7 @@ contract PrimeNetworkTest is Test {
     address computeManager;
     uint256 computeManager_sk;
     PrimeNetwork primeNetwork;
-    PrimeIntellectToken primeIntellectToken;
+    AIToken AI;
     ComputeRegistry computeRegistry;
     ComputePool computePool;
     StakeManager stakeManager;
@@ -48,12 +48,12 @@ contract PrimeNetworkTest is Test {
         federator = makeAddr("federator");
         validator = makeAddr("validator");
         startHoax(federator);
-        primeIntellectToken = new PrimeIntellectToken("Prime Intellect", "PRIME");
-        primeNetwork = new PrimeNetwork(federator, validator, primeIntellectToken);
+        AI = new AIToken("Prime Intellect", "AI");
+        primeNetwork = new PrimeNetwork(federator, validator, AI);
         computeRegistry = new ComputeRegistry(address(primeNetwork));
-        stakeManager = new StakeManager(address(primeNetwork), unbondingPeriod, primeIntellectToken);
+        stakeManager = new StakeManager(address(primeNetwork), unbondingPeriod, AI);
         domainRegistry = new DomainRegistry(address(primeNetwork));
-        computePool = new ComputePool(address(primeNetwork), domainRegistry, computeRegistry, primeIntellectToken);
+        computePool = new ComputePool(address(primeNetwork), domainRegistry, computeRegistry, AI);
 
         primeNetwork.setModuleAddresses(
             address(computeRegistry), address(domainRegistry), address(stakeManager), address(computePool)
@@ -74,10 +74,10 @@ contract PrimeNetworkTest is Test {
         (node_bad1, node_bad1_sk) = makeAddrAndKey("node_bad1");
         (computeManager, computeManager_sk) = makeAddrAndKey("computeManager");
 
-        primeIntellectToken.mint(provider_good1, 1000);
-        primeIntellectToken.mint(provider_good2, 1000);
-        primeIntellectToken.mint(provider_good3, 1000);
-        primeIntellectToken.mint(provider_bad1, 1000);
+        AI.mint(provider_good1, 1000);
+        AI.mint(provider_good2, 1000);
+        AI.mint(provider_good3, 1000);
+        AI.mint(provider_bad1, 1000);
     }
 
     function test_federatorRole() public {
@@ -94,7 +94,7 @@ contract PrimeNetworkTest is Test {
 
     function test_providerRegistration() public {
         vm.startPrank(provider_good1);
-        primeIntellectToken.approve(address(primeNetwork), 10);
+        AI.approve(address(primeNetwork), 10);
         primeNetwork.registerProvider(10);
         (address providerAddress,,) = computeRegistry.providers(provider_good1);
         assertEq(providerAddress, provider_good1);
@@ -102,8 +102,8 @@ contract PrimeNetworkTest is Test {
 
     function test_providerDeregistrationAndUnstaking() public {
         vm.startPrank(provider_good1);
-        assertEq(primeIntellectToken.balanceOf(provider_good1), 1000);
-        primeIntellectToken.approve(address(primeNetwork), 10);
+        assertEq(AI.balanceOf(provider_good1), 1000);
+        AI.approve(address(primeNetwork), 10);
         primeNetwork.registerProvider(10);
         primeNetwork.deregisterProvider(provider_good1);
         (address providerAddress,,) = computeRegistry.providers(provider_good1);
@@ -115,7 +115,7 @@ contract PrimeNetworkTest is Test {
         IStakeManager.Unbond[] memory bond = stakeManager.getPendingUnbonds(provider_good1);
         console.log("Unbond:", bond[0].amount, bond[0].timestamp);
         stakeManager.withdraw();
-        assertEq(primeIntellectToken.balanceOf(provider_good1), 1000);
+        assertEq(AI.balanceOf(provider_good1), 1000);
     }
 
     function test_domainCreation() public {
@@ -137,12 +137,12 @@ contract PrimeNetworkTest is Test {
         assertEq(domain.name, "Decentralized Training");
         uint256 domainId = domain.domainId;
         // mint some tokens so provider can stake
-        primeIntellectToken.mint(address(provider_good1), 10);
+        AI.mint(address(provider_good1), 10);
         // end federator role ------
         // start provider role -----
         vm.startPrank(provider_good1);
         // register provider
-        primeIntellectToken.approve(address(primeNetwork), 10);
+        AI.approve(address(primeNetwork), 10);
         primeNetwork.registerProvider(10);
         // create a signature from node and add node
         bytes32 digest = keccak256(abi.encodePacked(provider_good1, node_good1)).toEthSignedMessageHash();
@@ -162,7 +162,7 @@ contract PrimeNetworkTest is Test {
         vm.startPrank(pool_creator);
         // create compute pool
         uint256 poolId = computePool.createComputePool(
-            0, computeManager, "INTELLECT-2", "https://primeintellect.ai/pools/intellect-2"
+            domainId, computeManager, "INTELLECT-2", "https://primeintellect.ai/pools/intellect-2"
         );
         computePool.startComputePool(poolId);
         // invite node to join pool

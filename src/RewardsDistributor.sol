@@ -11,7 +11,7 @@ contract RewardsDistributor {
     IComputeRegistry public computeRegistry;
     uint256 public poolId;
     mapping(address => uint256) public lastClaimed;
-    IERC20 public PrimeToken;
+    IERC20 public AIToken;
     uint256 public rewardRate;
 
     constructor(IComputePool _computePool, IComputeRegistry _computeRegistry, uint256 _poolId) {

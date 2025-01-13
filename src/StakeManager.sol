@@ -12,7 +12,7 @@ contract StakeManager is IStakeManager, AccessControl {
     }
 
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
-    IERC20 public PrimeToken;
+    IERC20 public AIToken;
 
     mapping(address => uint256) private _stakes;
     mapping(address => UnbondTracker) private _unbonds;
@@ -21,9 +21,9 @@ contract StakeManager is IStakeManager, AccessControl {
     uint256 private _unbondingPeriod;
     uint256 private _stakeMinimum;
 
-    constructor(address primeAdmin, uint256 unbondingPeriod, IERC20 primeToken) {
+    constructor(address primeAdmin, uint256 unbondingPeriod, IERC20 _AIToken) {
         _unbondingPeriod = unbondingPeriod;
-        PrimeToken = primeToken;
+        AIToken = _AIToken;
         _grantRole(DEFAULT_ADMIN_ROLE, primeAdmin);
         _grantRole(PRIME_ROLE, primeAdmin);
     }
@@ -31,7 +31,7 @@ contract StakeManager is IStakeManager, AccessControl {
     function stake(address staker, uint256 amount) external onlyRole(PRIME_ROLE) {
         _stakes[staker] += amount;
         _totalStaked += amount;
-        PrimeToken.transferFrom(msg.sender, address(this), amount);
+        AIToken.transferFrom(msg.sender, address(this), amount);
         emit Stake(staker, amount);
     }
 
@@ -62,7 +62,7 @@ contract StakeManager is IStakeManager, AccessControl {
         if (amount == 0) {
             revert("StakeManager: no funds to withdraw");
         }
-        PrimeToken.transfer(msg.sender, amount);
+        AIToken.transfer(msg.sender, amount);
         emit Withdraw(msg.sender, amount);
     }
 
@@ -71,7 +71,7 @@ contract StakeManager is IStakeManager, AccessControl {
         reason.length == 0; // silence warning
         _stakes[staker] -= amount;
         _totalStaked -= amount;
-        PrimeToken.transfer(msg.sender, amount);
+        AIToken.transfer(msg.sender, amount);
         emit Unstake(staker, amount);
     }
 

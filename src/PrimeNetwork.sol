@@ -22,13 +22,13 @@ contract PrimeNetwork is AccessControl {
     IStakeManager public stakeManager;
     IComputePool public computePool;
 
-    IERC20 public PrimeToken;
+    IERC20 public AIToken;
 
-    constructor(address _federator, address _validator, IERC20 _PrimeToken) {
+    constructor(address _federator, address _validator, IERC20 _AIToken) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(FEDERATOR_ROLE, _federator);
         _grantRole(VALIDATOR_ROLE, _validator);
-        PrimeToken = _PrimeToken;
+        AIToken = _AIToken;
     }
 
     function setModuleAddresses(
@@ -91,8 +91,8 @@ contract PrimeNetwork is AccessControl {
         address provider = msg.sender;
         bool success = computeRegistry.register(provider);
         require(success, "Provider registration failed");
-        PrimeToken.transferFrom(msg.sender, address(this), stake);
-        PrimeToken.approve(address(stakeManager), stake);
+        AIToken.transferFrom(msg.sender, address(this), stake);
+        AIToken.approve(address(stakeManager), stake);
         stakeManager.stake(provider, stake);
         emit ProviderRegistered(provider, stake);
     }
