@@ -83,7 +83,7 @@ A typical usage flow might look like this:
 3. **Provider** stakes AI tokens and registers via `PrimeNetwork`.  
 4. **Provider** adds compute nodes, which are then validated/whitelisted by a **Validator**.  
 5. **Federator** creates a new domain in `DomainRegistry`.  
-6. **Provider** (acting as a pool creator or participant) creates a `ComputePool` and invites nodes to join.  
+6. **Provider** (acting as a participant) creates a `ComputePool` and invites nodes to join.  
 7. **Provider** can leave a pool (or be blacklisted) at any time, triggering node status updates in `ComputeRegistry`.  
 8. **RewardsDistributor** calculates and disperses rewards to providers for the compute time they contributed.
 
@@ -101,10 +101,12 @@ sequenceDiagram
     participant CP as ComputePool
     participant RD as RewardsDistributor
 
+    rect rgb(140, 100, 66)
     Note over F: (1) Federator sets up modules
-    F->>PN: setModuleAddresses(CR, DR, SM, CP)
-    F->>PN: setStakeMinimum(minStake)
+    F->>PN: deploy modules  + set min stake + set validator
+    end
 
+    rect rgb(0, 0, 120)
     Note over P: (2) Provider registers
     P->>PN: registerProvider(stakeAmount)
     PN->>CR: register(provider)
@@ -113,37 +115,46 @@ sequenceDiagram
     Note over P: (3) Provider adds compute node
     P->>PN: addComputeNode(nodeKey, specsURI, computeUnits, signature)
     PN->>CR: addComputeNode(...)
+    end
 
+    rect rgb(0, 120, 0)
     Note over V: (4) Validator whitelists & validates
     V->>PN: whitelistProvider(provider)
     V->>PN: validateNode(provider, nodeKey)
+    end
 
+    rect rgb(140, 100, 66)
     Note over F: (5) Federator creates a domain
     F->>PN: createDomain(domainName, validationLogic, domainURI)
     PN->>DR: create(...)
+    end
 
-    Note over P: (6) Pool creation & join
+    rect rgb(120, 0, 0)
+    Note over PC: (6) Pool creation
     PC->>CP: createComputePool(domainId, managerKey, poolName, poolDataURI)
     CP->>CP: poolId = <new>
     PC->>CP: startComputePool(poolId)
     CP->>RD: <new> distributor <br /> (contract creation)
-    PC->>P: signInvite(domainId, poolId, nodekey) <br /> (offchain message)
+    end
+    rect rgb(80, 0, 80)
+    Note over P: (7) Provider adds node to pool using invite from PoolCreator
+    PC-->>P: signInvite(domainId, poolId, nodekey) <br /> (offchain message)
     P->>CP: joinComputePool(poolId, provider, [nodeKey], [signatureInvite])
     CP->>CR: updateNodeStatus(provider, nodeKey, true) (set active)
+    end
+    
 
-    Note over P: (7) Provider removes node from the pool (optional)
+    rect rgb(0, 0, 120)
+    Note over P: (8) Provider removes nodes, claims reward and deregisters
     P->>CP: leaveComputePool(poolId, provider, nodeKey)
     CP->>CR: updateNodeStatus(provider, nodeKey, false) (set inactive)
-
-    Note over P: (8) Provider claims rewards for contribution to compute
     P->>RD: claimRewards()
-
-    Note over P: (9) Once there's no active nodes, <br /> provider can deregister to remove stake
     P->>PN: deregister()
     PN->>SM: unstake(provider)
 
-    Note over P: (10) After unbonding period, provider can withdraw stake
+    Note over P: (9) After unbonding period, provider can withdraw stake
     P->>SM: withdraw()
+    end
 ```
 
 ---
