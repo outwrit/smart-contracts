@@ -13,6 +13,7 @@ import {IDomainRegistry} from "../src/interfaces/IDomainRegistry.sol";
 import {IWorkValidation} from "../src/interfaces/IWorkValidation.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 contract PrimeNetworkTest is Test {
     using ECDSA for bytes32;
@@ -80,6 +81,119 @@ contract PrimeNetworkTest is Test {
         AI.mint(provider_bad1, 1000);
     }
 
+    function addProvider(address provider) public {
+        vm.startPrank(provider);
+        AI.approve(address(primeNetwork), 10);
+        primeNetwork.registerProvider(10);
+    }
+
+    function removeProvider(address provider) public {
+        vm.startPrank(provider);
+        primeNetwork.deregisterProvider(provider);
+    }
+
+    function addNode(address provider, address node, uint256 node_sk) public {
+        vm.startPrank(provider);
+        bytes32 digest = keccak256(abi.encodePacked(provider, node)).toEthSignedMessageHash();
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(node_sk, digest);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        primeNetwork.addComputeNode(node, "ipfs://nodekey/", 10, signature);
+    }
+
+    function removeNode(address provider, address node) public {
+        vm.startPrank(provider);
+        primeNetwork.removeComputeNode(provider, node);
+    }
+
+    function whitelistProvider(address provider) public {
+        vm.startPrank(validator);
+        primeNetwork.whitelistProvider(provider);
+    }
+
+    function blacklistProvider(address provider) public {
+        vm.startPrank(validator);
+        primeNetwork.blacklistProvider(provider);
+    }
+
+    function validateNode(address provider, address node) public {
+        vm.startPrank(validator);
+        primeNetwork.validateNode(provider, node);
+    }
+
+    function invalidateNode(address provider, address node) public {
+        vm.startPrank(validator);
+        primeNetwork.invalidateNode(provider, node);
+    }
+
+    function withdrawStake(address provider) public {
+        vm.startPrank(provider);
+        stakeManager.withdraw();
+    }
+
+    function slashProvider(address provider, uint256 amount) public {
+        vm.startPrank(validator);
+        primeNetwork.slash(provider, amount, "test");
+    }
+
+    function newDomain(string memory name, string memory uri) public returns (uint256) {
+        vm.startPrank(federator);
+        return primeNetwork.createDomain(name, IWorkValidation(address(0)), uri);
+    }
+
+    function newPool(uint256 domainId, string memory name, string memory uri) public returns (uint256) {
+        vm.startPrank(pool_creator);
+        return computePool.createComputePool(domainId, computeManager, name, uri);
+    }
+
+    function startPool(uint256 poolId) public {
+        vm.startPrank(pool_creator);
+        computePool.startComputePool(poolId);
+    }
+
+    function nodeJoin(uint256 domainId, uint256 poolId, address provider, address node) public {
+        bytes32 digest = keccak256(abi.encodePacked(domainId, poolId, node)).toEthSignedMessageHash();
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(computeManager_sk, digest);
+        bytes memory signature = abi.encodePacked(r, s, v);
+        vm.startPrank(provider);
+        address[] memory nodes = new address[](1);
+        bytes[] memory signatures = new bytes[](1);
+        nodes[0] = node;
+        signatures[0] = signature;
+        computePool.joinComputePool(poolId, provider, nodes, signatures);
+    }
+
+    function nodeJoinMultiple(uint256 domainId, uint256 poolId, address provider, address[] memory nodes) public {
+        bytes[] memory signatures = new bytes[](nodes.length);
+        for (uint256 i = 0; i < nodes.length; i++) {
+            bytes32 digest = keccak256(abi.encodePacked(domainId, poolId, nodes[i])).toEthSignedMessageHash();
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(computeManager_sk, digest);
+            bytes memory signature = abi.encodePacked(r, s, v);
+            signatures[i] = signature;
+        }
+        vm.startPrank(provider);
+        computePool.joinComputePool(poolId, provider, nodes, signatures);
+    }
+
+    function nodeLeave(uint256 poolId, address provider, address node) public {
+        vm.startPrank(provider);
+        computePool.leaveComputePool(poolId, provider, node);
+    }
+
+    function nodeLeaveAll(uint256 poolId, address provider) public {
+        vm.startPrank(provider);
+        computePool.leaveComputePool(poolId, provider, address(0));
+    }
+
+    function blacklistProviderFromPool(uint256 poolId, address provider) public {
+        vm.startPrank(pool_creator);
+        computePool.blacklistProvider(poolId, provider);
+    }
+
+    function blacklistNodeFromPool(uint256 poolId, address provider, address node) public {
+        vm.startPrank(pool_creator);
+        computePool.blacklistNode(poolId, provider, node);
+    }
+
     function test_federatorRole() public {
         vm.startPrank(address(0));
         vm.expectRevert();
@@ -124,6 +238,165 @@ contract PrimeNetworkTest is Test {
         IDomainRegistry.Domain memory domain = domainRegistry.get(0);
         assertEq(domain.domainId, 0);
         assertEq(domain.name, "test");
+    }
+
+    function test_providerOps() public {
+        addProvider(provider_good1);
+        assertEq(computeRegistry.getProvider(provider_good1).providerAddress, provider_good1);
+        addProvider(provider_good2);
+        assertEq(computeRegistry.getProvider(provider_good2).providerAddress, provider_good2);
+        addProvider(provider_good3);
+        assertEq(computeRegistry.getProvider(provider_good3).providerAddress, provider_good3);
+        addProvider(provider_bad1);
+        assertEq(computeRegistry.getProvider(provider_bad1).providerAddress, provider_bad1);
+        // whitelist good providers
+        whitelistProvider(provider_good1);
+        assertEq(computeRegistry.getProvider(provider_good1).isWhitelisted, true);
+        whitelistProvider(provider_good2);
+        assertEq(computeRegistry.getProvider(provider_good2).isWhitelisted, true);
+        whitelistProvider(provider_good3);
+        assertEq(computeRegistry.getProvider(provider_good3).isWhitelisted, true);
+        assertEq(computeRegistry.getProvider(provider_bad1).isWhitelisted, false);
+
+        // slash prior to unstaking
+        slashProvider(provider_bad1, 5);
+
+        removeProvider(provider_bad1);
+        assertEq(computeRegistry.getProvider(provider_bad1).providerAddress, address(0));
+        removeProvider(provider_good1);
+        assertEq(computeRegistry.getProvider(provider_good1).providerAddress, address(0));
+        removeProvider(provider_good2);
+        assertEq(computeRegistry.getProvider(provider_good2).providerAddress, address(0));
+        removeProvider(provider_good3);
+        assertEq(computeRegistry.getProvider(provider_good3).providerAddress, address(0));
+
+        IStakeManager.Unbond[] memory unbonds = stakeManager.getPendingUnbonds(provider_bad1);
+        assertEq(unbonds[0].amount, 5);
+
+        // slash post unstaking, but pre unbonding period expiry
+        slashProvider(provider_bad1, 2);
+        unbonds = stakeManager.getPendingUnbonds(provider_bad1);
+        assertEq(unbonds[0].amount, 3);
+
+        // skip to unbond time
+        skip(unbondingPeriod + 10);
+        // check stake withdrawal
+        withdrawStake(provider_good1);
+        assertEq(AI.balanceOf(provider_good1), 1000);
+        withdrawStake(provider_good2);
+        assertEq(AI.balanceOf(provider_good2), 1000);
+        withdrawStake(provider_good3);
+        assertEq(AI.balanceOf(provider_good3), 1000);
+        withdrawStake(provider_bad1);
+        assertEq(AI.balanceOf(provider_bad1), 993);
+        assertEq(AI.balanceOf(validator), 7);
+    }
+
+    function test_nodeOps() public {
+        addProvider(provider_good1);
+
+        addNode(provider_good1, node_good1, node_good1_sk);
+        addNode(provider_good1, node_good2, node_good2_sk);
+        addNode(provider_good1, node_good3, node_good3_sk);
+        addNode(provider_good1, node_bad1, node_bad1_sk);
+
+        whitelistProvider(provider_good1);
+        validateNode(provider_good1, node_good1);
+        validateNode(provider_good1, node_good2);
+        validateNode(provider_good1, node_good3);
+        validateNode(provider_good1, node_bad1);
+
+        assertEq(computeRegistry.getNode(provider_good1, node_good1).subkey, node_good1);
+        assertEq(computeRegistry.getNode(provider_good1, node_good2).subkey, node_good2);
+        assertEq(computeRegistry.getNode(provider_good1, node_good3).subkey, node_good3);
+        assertEq(computeRegistry.getNode(provider_good1, node_bad1).subkey, node_bad1);
+
+        invalidateNode(provider_good1, node_bad1);
+        assertEq(computeRegistry.getNode(provider_good1, node_bad1).isValidated, false);
+
+        uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
+        uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
+
+        startPool(pool);
+
+        nodeJoin(domain, pool, provider_good1, node_good1);
+        address[] memory nodes = new address[](2);
+        nodes[0] = node_good2;
+        nodes[1] = node_good3;
+
+        nodeJoinMultiple(domain, pool, provider_good1, nodes);
+
+        vm.expectRevert();
+        nodeJoin(domain, pool, provider_good1, node_bad1);
+
+        // should revert since node is already in another pool
+        vm.expectRevert();
+        nodeJoin(domain, pool, provider_good1, node_good1);
+
+        nodeLeave(pool, provider_good1, node_good1);
+
+        // should revert because provider still has active nodes
+        vm.expectRevert();
+        removeProvider(provider_good1);
+
+        nodeLeaveAll(pool, provider_good1);
+
+        nodeJoin(domain, pool, provider_good1, node_good1);
+        nodeJoin(domain, pool, provider_good1, node_good2);
+
+        // check blacklist prevents nodes from rejoining
+        blacklistNodeFromPool(pool, provider_good1, node_good1);
+        vm.expectRevert();
+        nodeJoin(domain, pool, provider_good1, node_good1);
+
+        // check that provider level blacklist also works
+        blacklistProviderFromPool(pool, provider_good1);
+        vm.expectRevert();
+        nodeJoin(domain, pool, provider_good1, node_good2);
+
+        // should succeed now that all nodes are removed (forcibly or voluntarily)
+        removeProvider(provider_good1);
+
+        skip(stakeManager.getUnbondingPeriod() + 10);
+
+        withdrawStake(provider_good1);
+        assertEq(AI.balanceOf(provider_good1), 1000);
+    }
+
+    function test_noNodeOwnedByMultipleProviders() public {
+        addProvider(provider_good1);
+        addProvider(provider_good2);
+
+        addNode(provider_good1, node_good1, node_good1_sk);
+        // should revert as node is already owned by provider_good1
+        vm.expectRevert();
+        addNode(provider_good2, node_good1, node_good1_sk);
+    }
+
+    function test_registerWithPermit() public {
+        address provider_permit;
+        uint256 provider_permit_sk;
+        (provider_permit, provider_permit_sk) = makeAddrAndKey("provider_permit");
+        bytes32 DOMAIN_SEPARATOR;
+        bytes32 PERMIT_TYPEHASH =
+            keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        DOMAIN_SEPARATOR = AI.DOMAIN_SEPARATOR();
+
+        vm.startPrank(federator);
+        AI.mint(provider_permit, 100);
+        vm.startPrank(provider_permit);
+        address owner = provider_permit;
+        address spender = address(primeNetwork);
+        uint256 value = 10;
+        uint256 deadline = block.timestamp + 1000;
+        uint256 nonce = AI.nonces(provider_good1);
+        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonce, deadline));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
+
+        // Sign the digest
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(provider_permit_sk, digest);
+        bytes memory signature = abi.encode(r, s, v);
+        primeNetwork.registerProviderWithPermit(value, deadline, signature);
     }
 
     function test_computePoolFlow() public {

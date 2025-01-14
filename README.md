@@ -107,54 +107,59 @@ sequenceDiagram
     end
 
     rect rgb(0, 0, 120)
-    Note over P: (2) Provider registers
+    Note over P: (2-4) Provider registers
     P->>PN: registerProvider(stakeAmount)
     PN->>CR: register(provider)
     PN->>SM: stake(provider, stakeAmount)
 
-    Note over P: (3) Provider adds compute node
+    Note over P: (5-6) Provider adds compute node
     P->>PN: addComputeNode(nodeKey, specsURI, computeUnits, signature)
     PN->>CR: addComputeNode(...)
     end
 
     rect rgb(0, 120, 0)
-    Note over V: (4) Validator whitelists & validates
-    V->>PN: whitelistProvider(provider)
-    V->>PN: validateNode(provider, nodeKey)
+    Note over V: (7-8) Validator whitelists & validates
+    V->>PN: whitelistProvider(provider) // validateNode(provider, nodeKey)
+    PN->>CR: setWhitelistStatus(...) <br/> setNodeValidationStatus(...)
     end
 
     rect rgb(140, 100, 66)
-    Note over F: (5) Federator creates a domain
+    Note over F: (9-10) Federator creates a domain
     F->>PN: createDomain(domainName, validationLogic, domainURI)
     PN->>DR: create(...)
     end
 
     rect rgb(120, 0, 0)
-    Note over PC: (6) Pool creation
+    Note over PC: (11-14) Pool creation
     PC->>CP: createComputePool(domainId, managerKey, poolName, poolDataURI)
     CP->>CP: poolId = <new>
     PC->>CP: startComputePool(poolId)
     CP->>RD: <new> distributor <br /> (contract creation)
     end
     rect rgb(80, 0, 80)
-    Note over P: (7) Provider adds node to pool using invite from PoolCreator
+    loop Active ComputePool
+    Note over P: (15-17) Provider adds node to pool using invite from PoolCreator
     PC-->>P: signInvite(domainId, poolId, nodekey) <br /> (offchain message)
     P->>CP: joinComputePool(poolId, provider, [nodeKey], [signatureInvite])
     CP->>CR: updateNodeStatus(provider, nodeKey, true) (set active)
+    Note over PC: (18-19) PoolCreator can blacklist bad nodes/providers
+    PC->>CP: blacklistNode(poolId, nodekey) // blacklistProvider(poolId, provider)
+    CP->>CR: updateNodeStatus(provider, nodeKey, false) (set inactive)
     end
-    
+    end
 
     rect rgb(0, 0, 120)
-    Note over P: (8) Provider removes nodes, claims reward and deregisters
+    Note over P: (20-24) Provider removes nodes, claims reward and deregisters
     P->>CP: leaveComputePool(poolId, provider, nodeKey)
     CP->>CR: updateNodeStatus(provider, nodeKey, false) (set inactive)
     P->>RD: claimRewards()
     P->>PN: deregister()
     PN->>SM: unstake(provider)
 
-    Note over P: (9) After unbonding period, provider can withdraw stake
+    Note over P: (25) After unbonding period, provider can withdraw stake
     P->>SM: withdraw()
     end
+
 ```
 
 ---

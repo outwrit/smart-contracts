@@ -6,6 +6,7 @@ import "./interfaces/IStakeManager.sol";
 import "./interfaces/IDomainRegistry.sol";
 import "./interfaces/IWorkValidation.sol";
 import "./interfaces/IComputePool.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -66,23 +67,25 @@ contract PrimeNetwork is AccessControl {
 
     function validateNode(address provider, address nodekey) external onlyRole(VALIDATOR_ROLE) {
         computeRegistry.setNodeValidationStatus(provider, nodekey, true);
+        emit ComputeNodeValidated(provider, nodekey);
     }
 
     function invalidateNode(address provider, address nodekey) external onlyRole(VALIDATOR_ROLE) {
         computeRegistry.setNodeValidationStatus(provider, nodekey, false);
+        emit ComputeNodeInvalidated(provider, nodekey);
     }
 
     function setStakeMinimum(uint256 amount) external onlyRole(FEDERATOR_ROLE) {
         stakeManager.setStakeMinimum(amount);
-        emit StakeMinimumUpdate(amount);
     }
 
     function createDomain(string calldata domainName, IWorkValidation validationLogic, string calldata domainURI)
         external
         onlyRole(FEDERATOR_ROLE)
+        returns (uint256)
     {
         uint256 domainId = domainRegistry.create(domainName, computePool, validationLogic, domainURI);
-        emit DomainCreated(domainName, domainId);
+        return domainId;
     }
 
     function registerProvider(uint256 stake) external {
@@ -91,6 +94,20 @@ contract PrimeNetwork is AccessControl {
         address provider = msg.sender;
         bool success = computeRegistry.register(provider);
         require(success, "Provider registration failed");
+        AIToken.transferFrom(msg.sender, address(this), stake);
+        AIToken.approve(address(stakeManager), stake);
+        stakeManager.stake(provider, stake);
+        emit ProviderRegistered(provider, stake);
+    }
+
+    function registerProviderWithPermit(uint256 stake, uint256 deadline, bytes memory signature) external {
+        uint256 stakeMinimum = stakeManager.getStakeMinimum();
+        require(stake >= stakeMinimum, "Stake amount is below minimum");
+        address provider = msg.sender;
+        bool success = computeRegistry.register(provider);
+        require(success, "Provider registration failed");
+        (bytes32 r, bytes32 s, uint8 v) = abi.decode(signature, (bytes32, bytes32, uint8));
+        IERC20Permit(address(AIToken)).permit(msg.sender, address(this), stake, deadline, v, r, s);
         AIToken.transferFrom(msg.sender, address(this), stake);
         AIToken.approve(address(stakeManager), stake);
         stakeManager.stake(provider, stake);
@@ -121,6 +138,11 @@ contract PrimeNetwork is AccessControl {
         require(hasRole(VALIDATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
         computeRegistry.removeComputeNode(provider, nodekey);
         emit ComputeNodeRemoved(provider, nodekey);
+    }
+
+    function slash(address provider, uint256 amount, bytes calldata reason) external onlyRole(VALIDATOR_ROLE) {
+        uint256 slashed = stakeManager.slash(provider, amount, reason);
+        AIToken.transfer(msg.sender, slashed);
     }
 
     function _verifyNodekeySignature(address provider, address nodekey, bytes memory signature)

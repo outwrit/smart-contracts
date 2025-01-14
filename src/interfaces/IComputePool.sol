@@ -6,17 +6,24 @@ import "./IRewardsDistributor.sol";
 
 event ComputePoolCreated(uint256 indexed poolId, uint256 indexed domainId, address indexed creator);
 
-event ComputePoolFunded(uint256 indexed poolId, uint256 amount);
+event ComputePoolStarted(uint256 indexed poolId, uint256 timestamp);
 
 event ComputePoolEnded(uint256 indexed poolId);
 
 event ComputePoolURIUpdated(uint256 indexed poolId, string uri);
 
+event ComputePoolJoined(uint256 indexed poolId, address indexed provider, address[] nodekeys);
+
+event ComputePoolLeft(uint256 indexed poolId, address indexed provider, address nodekey);
+
+event ComputePoolProviderBlacklisted(uint256 indexed poolId, address indexed provider);
+
+event ComputePoolNodeBlacklisted(uint256 indexed poolId, address indexed provider, address nodekey);
+
 interface IComputePool {
     enum PoolStatus {
         PENDING,
         ACTIVE,
-        CANCELED,
         COMPLETED
     }
 
@@ -36,7 +43,6 @@ interface IComputePool {
     }
 
     struct WorkInterval {
-        uint256 poolId;
         uint256 joinTime;
         uint256 leaveTime;
     }
@@ -52,9 +58,15 @@ interface IComputePool {
     function joinComputePool(uint256 poolId, address provider, address[] memory nodekeys, bytes[] memory signatures)
         external;
     function leaveComputePool(uint256 poolId, address provider, address nodekey) external;
+    function changeComputePool(
+        uint256 fromPoolId,
+        uint256 toPoolId,
+        address[] memory nodekeys,
+        bytes[] memory signatures
+    ) external;
     function updateComputePoolURI(uint256 poolId, string calldata poolDataURI) external;
     function blacklistProvider(uint256 poolId, address provider) external;
-    function blacklistNode(uint256 poolId, address nodekey) external;
+    function blacklistNode(uint256 poolId, address provider, address nodekey) external;
     function getComputePool(uint256 poolId) external view returns (PoolInfo memory);
     function getComputePoolProviders(uint256 poolId) external view returns (address[] memory);
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory);

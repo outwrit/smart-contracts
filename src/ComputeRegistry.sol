@@ -12,6 +12,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
     mapping(address => ComputeProvider) public providers;
+    mapping(address => address) public nodeProviderMap;
     EnumerableMap.AddressToUintMap private nodeSubkeyToIndex;
 
     constructor(address primeAdmin) {
@@ -49,17 +50,22 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         onlyRole(PRIME_ROLE)
         returns (uint256)
     {
+        address existingProvider = nodeProviderMap[subkey];
+        require(
+            existingProvider == address(0), "ComputeRegistry: node already exists or registered to a different provider"
+        );
         ComputeProvider storage cp = providers[provider];
         ComputeNode memory cn;
         cn.provider = provider;
         cn.computeUnits = uint32(computeUnits);
         cn.specsURI = specsURI;
         cn.benchmarkScore = 0;
-        cn.isActive = true;
+        cn.isActive = false;
         cn.subkey = subkey;
         cp.nodes.push(cn);
         uint256 index = cp.nodes.length - 1;
         nodeSubkeyToIndex.set(subkey, index);
+        nodeProviderMap[subkey] = provider;
         return index;
     }
 
@@ -79,6 +85,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         // remove last node
         cp.nodes.pop();
         nodeSubkeyToIndex.remove(subkey);
+        nodeProviderMap[subkey] = address(0);
         return true;
     }
 
@@ -109,12 +116,14 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         providers[provider].isWhitelisted = status;
     }
 
-    function getWhitelistStatus(address provider) external view returns (bool) {
-        return providers[provider].isWhitelisted;
-    }
-
     function setNodeValidationStatus(address provider, address subkey, bool status) external onlyRole(PRIME_ROLE) {
         providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].isValidated = status;
+    }
+
+    // view functions
+
+    function getWhitelistStatus(address provider) external view returns (bool) {
+        return providers[provider].isWhitelisted;
     }
 
     function getNodeValidationStatus(address provider, address subkey) external view returns (bool) {
@@ -144,5 +153,9 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
 
     function getNode(address provider, address subkey) external view returns (ComputeNode memory) {
         return providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
+    }
+
+    function getNodeProvider(address subkey) external view returns (address) {
+        return nodeProviderMap[subkey];
     }
 }

@@ -15,6 +15,10 @@ event ComputeNodeAdded(address provider, address nodekey, string specsURI);
 
 event ComputeNodeRemoved(address provider, address nodekey);
 
+event ComputeNodeValidated(address provider, address nodekey);
+
+event ComputeNodeInvalidated(address provider, address nodekey);
+
 interface IComputeRegistry {
     struct ComputeNode {
         address provider;
@@ -50,4 +54,5 @@ interface IComputeRegistry {
     function getProvider(address provider) external view returns (ComputeProvider memory);
     function getNodes(address provider, uint256 page, uint256 limit) external view returns (ComputeNode[] memory);
     function getNode(address provider, address subkey) external view returns (ComputeNode memory);
+    function getNodeProvider(address subkey) external view returns (address);
 }
