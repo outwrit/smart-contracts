@@ -82,17 +82,20 @@ contract StakeManager is IStakeManager, AccessControl {
                     if (unbonding_amount > amount) {
                         // slash the difference
                         uint256 diff = unbonding_amount - amount;
+                        _totalUnbonding -= (pending.unbonds[i].amount - diff);
                         pending.unbonds[i].amount = diff;
                         unbonding_amount = amount;
                         pending.offset = i;
                         break;
                     } else if (unbonding_amount == amount) {
                         // slash the whole unbond
+                        _totalUnbonding -= pending.unbonds[i].amount;
                         delete pending.unbonds[i];
                         pending.offset = i + 1;
                         break;
                     } else {
                         // slash the whole unbond and continue
+                        _totalUnbonding -= pending.unbonds[i].amount;
                         delete pending.unbonds[i];
                         pending.offset = i + 1;
                     }
