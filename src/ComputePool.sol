@@ -57,6 +57,18 @@ contract ComputePool is IComputePool, AccessControl {
         return SignatureChecker.isValidSignatureNow(computeManagerKey, messageHash, signature);
     }
 
+    function _updateLeaveTime(uint256 poolId, address nodekey) private {
+        uint256 leaveTime = block.timestamp;
+        if (pools[poolId].status == PoolStatus.COMPLETED) {
+            leaveTime = pools[poolId].endTime;
+        }
+        nodeWork[poolId][nodekey][nodeWork[poolId][nodekey].length - 1].leaveTime = leaveTime;
+    }
+
+    function _addJoinTime(uint256 poolId, address nodekey) private {
+        nodeWork[poolId][nodekey].push(WorkInterval({joinTime: block.timestamp, leaveTime: 0}));
+    }
+
     function createComputePool(
         uint256 domainId,
         address computeManagerKey,
@@ -244,6 +256,7 @@ contract ComputePool is IComputePool, AccessControl {
 
         // Add to blacklist set
         _blacklistedProviders[poolId].add(provider);
+        emit ComputePoolProviderBlacklisted(poolId, provider);
     }
 
     function blacklistNode(uint256 poolId, address provider, address nodekey) external {
@@ -263,6 +276,7 @@ contract ComputePool is IComputePool, AccessControl {
             }
         }
         _blacklistedNodes[poolId].add(nodekey);
+        emit ComputePoolNodeBlacklisted(poolId, provider, nodekey);
     }
 
     //
@@ -286,17 +300,5 @@ contract ComputePool is IComputePool, AccessControl {
 
     function getProviderActiveNodesInPool(uint256 poolId, address provider) external view returns (uint256) {
         return providerActiveNodes[poolId][provider];
-    }
-
-    function _updateLeaveTime(uint256 poolId, address nodekey) private {
-        uint256 leaveTime = block.timestamp;
-        if (pools[poolId].status == PoolStatus.COMPLETED) {
-            leaveTime = pools[poolId].endTime;
-        }
-        nodeWork[poolId][nodekey][nodeWork[poolId][nodekey].length - 1].leaveTime = leaveTime;
-    }
-
-    function _addJoinTime(uint256 poolId, address nodekey) private {
-        nodeWork[poolId][nodekey].push(WorkInterval({joinTime: block.timestamp, leaveTime: 0}));
     }
 }

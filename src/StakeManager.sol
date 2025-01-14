@@ -134,6 +134,7 @@ contract StakeManager is IStakeManager, AccessControl {
 
     function setStakeMinimum(uint256 minimum) external onlyRole(PRIME_ROLE) {
         _stakeMinimum = minimum;
+        emit StakeMinimumUpdate(minimum);
     }
 
     function getStake(address staker) external view returns (uint256) {
@@ -150,6 +151,10 @@ contract StakeManager is IStakeManager, AccessControl {
 
     function getUnbondingPeriod() external view returns (uint256) {
         return _unbondingPeriod;
+    }
+
+    function getTotalUnbonding() external view returns (uint256) {
+        return _totalUnbonding;
     }
 
     function getStakeMinimum() external view returns (uint256) {

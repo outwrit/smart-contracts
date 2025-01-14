@@ -31,5 +31,6 @@ interface IStakeManager {
     function getTotalStaked() external view returns (uint256);
     function getPendingUnbonds(address staker) external view returns (Unbond[] memory);
     function getUnbondingPeriod() external view returns (uint256);
+    function getTotalUnbonding() external view returns (uint256);
     function getStakeMinimum() external view returns (uint256);
 }

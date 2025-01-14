@@ -116,12 +116,14 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         providers[provider].isWhitelisted = status;
     }
 
-    function getWhitelistStatus(address provider) external view returns (bool) {
-        return providers[provider].isWhitelisted;
-    }
-
     function setNodeValidationStatus(address provider, address subkey, bool status) external onlyRole(PRIME_ROLE) {
         providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].isValidated = status;
+    }
+
+    // view functions
+
+    function getWhitelistStatus(address provider) external view returns (bool) {
+        return providers[provider].isWhitelisted;
     }
 
     function getNodeValidationStatus(address provider, address subkey) external view returns (bool) {

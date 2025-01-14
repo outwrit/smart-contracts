@@ -16,6 +16,10 @@ event ComputePoolJoined(uint256 indexed poolId, address indexed provider, addres
 
 event ComputePoolLeft(uint256 indexed poolId, address indexed provider, address nodekey);
 
+event ComputePoolProviderBlacklisted(uint256 indexed poolId, address indexed provider);
+
+event ComputePoolNodeBlacklisted(uint256 indexed poolId, address indexed provider, address nodekey);
+
 interface IComputePool {
     enum PoolStatus {
         PENDING,

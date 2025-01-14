@@ -67,15 +67,16 @@ contract PrimeNetwork is AccessControl {
 
     function validateNode(address provider, address nodekey) external onlyRole(VALIDATOR_ROLE) {
         computeRegistry.setNodeValidationStatus(provider, nodekey, true);
+        emit ComputeNodeValidated(provider, nodekey);
     }
 
     function invalidateNode(address provider, address nodekey) external onlyRole(VALIDATOR_ROLE) {
         computeRegistry.setNodeValidationStatus(provider, nodekey, false);
+        emit ComputeNodeInvalidated(provider, nodekey);
     }
 
     function setStakeMinimum(uint256 amount) external onlyRole(FEDERATOR_ROLE) {
         stakeManager.setStakeMinimum(amount);
-        emit StakeMinimumUpdate(amount);
     }
 
     function createDomain(string calldata domainName, IWorkValidation validationLogic, string calldata domainURI)

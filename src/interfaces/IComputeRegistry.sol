@@ -15,6 +15,10 @@ event ComputeNodeAdded(address provider, address nodekey, string specsURI);
 
 event ComputeNodeRemoved(address provider, address nodekey);
 
+event ComputeNodeValidated(address provider, address nodekey);
+
+event ComputeNodeInvalidated(address provider, address nodekey);
+
 interface IComputeRegistry {
     struct ComputeNode {
         address provider;
