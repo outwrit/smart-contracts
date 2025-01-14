@@ -72,31 +72,35 @@ contract StakeManager is IStakeManager, AccessControl {
         returns (uint256 slashed)
     {
         reason.length == 0; // silence warning
-        if (_stakes[staker] <= amount) {
+        if (_stakes[staker] < amount) {
             // look in pending unbonds
             uint256 unbonding_amount = 0;
             UnbondTracker storage pending = _unbonds[staker];
             for (uint256 i = pending.offset; i < pending.unbonds.length; i++) {
-                if (pending.unbonds[i].timestamp <= block.timestamp) {
+                if (pending.unbonds[i].timestamp > block.timestamp) {
                     unbonding_amount += pending.unbonds[i].amount;
                     if (unbonding_amount > amount) {
                         // slash the difference
                         uint256 diff = unbonding_amount - amount;
-                        pending.unbonds[i].amount -= diff;
+                        pending.unbonds[i].amount = diff;
+                        unbonding_amount = amount;
+                        pending.offset = i;
                         break;
                     } else if (unbonding_amount == amount) {
                         // slash the whole unbond
                         delete pending.unbonds[i];
+                        pending.offset = i + 1;
                         break;
                     } else {
                         // slash the whole unbond and continue
                         delete pending.unbonds[i];
+                        pending.offset = i + 1;
                     }
                 }
             }
             if (unbonding_amount < amount) {
                 // slash the remaining amount from the stake
-                uint256 amount_left = unbonding_amount - amount;
+                uint256 amount_left = amount - unbonding_amount;
                 if (_stakes[staker] < amount_left) {
                     amount_left = _stakes[staker];
                 }
@@ -106,6 +110,10 @@ contract StakeManager is IStakeManager, AccessControl {
                 AIToken.transfer(msg.sender, total);
                 emit Slashed(staker, total, reason);
                 return total;
+            } else {
+                AIToken.transfer(msg.sender, amount);
+                emit Slashed(staker, amount, reason);
+                return amount;
             }
         } else {
             _stakes[staker] -= amount;

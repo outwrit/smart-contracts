@@ -152,23 +152,18 @@ contract ComputePool is IComputePool, AccessControl {
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
 
         if (nodekey == address(0)) {
-            _poolProviders[poolId].remove(provider);
-
             // Remove all nodes belonging to that provider
             address[] memory nodes = _poolNodes[poolId].values();
-            for (uint256 i = 0; i < nodes.length;) {
+            for (uint256 i = 0; i < nodes.length; ++i) {
                 IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodes[i]);
                 if (node.provider == provider) {
                     _poolNodes[poolId].remove(nodes[i]);
                     // Mark last interval's leaveTime
-                    _updateLeaveTime(poolId, nodekey);
+                    _updateLeaveTime(poolId, nodes[i]);
                     pools[poolId].totalCompute -= node.computeUnits;
                     providerActiveNodes[poolId][provider]--;
                     computeRegistry.updateNodeStatus(provider, nodes[i], false);
                     emit ComputePoolLeft(poolId, provider, nodes[i]);
-                }
-                unchecked {
-                    ++i;
                 }
             }
         } else {
@@ -251,20 +246,23 @@ contract ComputePool is IComputePool, AccessControl {
         _blacklistedProviders[poolId].add(provider);
     }
 
-    function blacklistNode(uint256 poolId, address nodekey) external {
+    function blacklistNode(uint256 poolId, address provider, address nodekey) external {
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
         require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist node");
 
-        _poolNodes[poolId].remove(nodekey);
-        _blacklistedNodes[poolId].add(nodekey);
-        _updateLeaveTime(poolId, nodekey);
-        IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(msg.sender, nodekey);
-        pools[poolId].totalCompute -= node.computeUnits;
-        providerActiveNodes[poolId][node.provider]--;
-        computeRegistry.updateNodeStatus(msg.sender, nodekey, false);
-        if (providerActiveNodes[poolId][node.provider] == 0) {
-            _poolProviders[poolId].remove(node.provider);
+        if (_poolNodes[poolId].contains(nodekey)) {
+            IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodekey);
+            require(node.provider == provider, "ComputePool: node does not exist");
+            _updateLeaveTime(poolId, nodekey);
+            _poolNodes[poolId].remove(nodekey);
+            pools[poolId].totalCompute -= node.computeUnits;
+            providerActiveNodes[poolId][node.provider]--;
+            computeRegistry.updateNodeStatus(node.provider, nodekey, false);
+            if (providerActiveNodes[poolId][node.provider] == 0) {
+                _poolProviders[poolId].remove(node.provider);
+            }
         }
+        _blacklistedNodes[poolId].add(nodekey);
     }
 
     //

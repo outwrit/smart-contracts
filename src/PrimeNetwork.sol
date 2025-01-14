@@ -81,9 +81,11 @@ contract PrimeNetwork is AccessControl {
     function createDomain(string calldata domainName, IWorkValidation validationLogic, string calldata domainURI)
         external
         onlyRole(FEDERATOR_ROLE)
+        returns (uint256)
     {
         uint256 domainId = domainRegistry.create(domainName, computePool, validationLogic, domainURI);
         emit DomainCreated(domainName, domainId);
+        return domainId;
     }
 
     function registerProvider(uint256 stake) external {

@@ -62,7 +62,7 @@ interface IComputePool {
     ) external;
     function updateComputePoolURI(uint256 poolId, string calldata poolDataURI) external;
     function blacklistProvider(uint256 poolId, address provider) external;
-    function blacklistNode(uint256 poolId, address nodekey) external;
+    function blacklistNode(uint256 poolId, address provider, address nodekey) external;
     function getComputePool(uint256 poolId) external view returns (PoolInfo memory);
     function getComputePoolProviders(uint256 poolId) external view returns (address[] memory);
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory);
