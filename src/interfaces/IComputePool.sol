@@ -16,7 +16,6 @@ interface IComputePool {
     enum PoolStatus {
         PENDING,
         ACTIVE,
-        CANCELED,
         COMPLETED
     }
 
@@ -36,7 +35,6 @@ interface IComputePool {
     }
 
     struct WorkInterval {
-        uint256 poolId;
         uint256 joinTime;
         uint256 leaveTime;
     }
@@ -52,6 +50,12 @@ interface IComputePool {
     function joinComputePool(uint256 poolId, address provider, address[] memory nodekeys, bytes[] memory signatures)
         external;
     function leaveComputePool(uint256 poolId, address provider, address nodekey) external;
+    function changeComputePool(
+        uint256 fromPoolId,
+        uint256 toPoolId,
+        address[] memory nodekeys,
+        bytes[] memory signatures
+    ) external;
     function updateComputePoolURI(uint256 poolId, string calldata poolDataURI) external;
     function blacklistProvider(uint256 poolId, address provider) external;
     function blacklistNode(uint256 poolId, address nodekey) external;

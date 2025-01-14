@@ -108,7 +108,7 @@ contract ComputePool is IComputePool, AccessControl {
     function joinComputePool(uint256 poolId, address provider, address[] memory nodekey, bytes[] memory signatures)
         external
     {
-        require(msg.sender == provider, "ComputePool: only provider can join pool");
+        require(msg.sender == provider || msg.sender == address(this), "ComputePool: only provider can join pool");
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
         require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: pool is not active");
         require(!_blacklistedProviders[poolId].contains(provider), "ComputePool: provider is blacklisted");
@@ -118,10 +118,13 @@ contract ComputePool is IComputePool, AccessControl {
             require(!_blacklistedNodes[poolId].contains(nodekey[i]), "ComputePool: node is blacklisted");
         }
 
-        _poolProviders[poolId].add(provider);
+        if (!_poolProviders[poolId].contains(provider)) {
+            _poolProviders[poolId].add(provider);
+        }
         for (uint256 i = 0; i < nodekey.length; i++) {
             IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodekey[i]);
             require(node.provider == provider, "ComputePool: node does not exist");
+            require(node.isActive == false, "ComputePool: node can only be in one pool at a time");
             require(computeRegistry.getNodeValidationStatus(provider, nodekey[i]), "ComputePool: node is not validated");
             require(
                 _verifyPoolInvite(
@@ -138,9 +141,8 @@ contract ComputePool is IComputePool, AccessControl {
     }
 
     function leaveComputePool(uint256 poolId, address provider, address nodekey) external {
+        require(msg.sender == provider || msg.sender == address(this), "ComputePool: only provider can leave pool");
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
-        require(pools[poolId].status != PoolStatus.COMPLETED, "ComputePool: pool is completed");
-        require(msg.sender == provider, "ComputePool: only provider can leave pool");
 
         if (nodekey == address(0)) {
             _poolProviders[poolId].remove(provider);
@@ -176,6 +178,28 @@ contract ComputePool is IComputePool, AccessControl {
         if (providerActiveNodes[poolId][provider] == 0) {
             _poolProviders[poolId].remove(provider);
         }
+    }
+
+    function changeComputePool(
+        uint256 fromPoolId,
+        uint256 toPoolId,
+        address[] memory nodekeys,
+        bytes[] memory signatures
+    ) external {
+        require(pools[fromPoolId].poolId == fromPoolId, "ComputePool: source pool does not exist");
+        require(pools[toPoolId].poolId == toPoolId, "ComputePool: dest pool does not exist");
+        require(pools[toPoolId].status == PoolStatus.ACTIVE, "ComputePool: dest pool is not ready");
+        address provider = msg.sender;
+
+        if (nodekeys.length == this.getProviderActiveNodesInPool(fromPoolId, provider)) {
+            // If all nodes are being moved, just move the provider
+            this.leaveComputePool(fromPoolId, provider, address(0));
+        } else {
+            for (uint256 i = 0; i < nodekeys.length; i++) {
+                this.leaveComputePool(fromPoolId, provider, nodekeys[i]);
+            }
+        }
+        this.joinComputePool(toPoolId, provider, nodekeys, signatures);
     }
 
     //
@@ -256,10 +280,14 @@ contract ComputePool is IComputePool, AccessControl {
     }
 
     function _updateLeaveTime(uint256 poolId, address nodekey) private {
-        nodeWork[poolId][nodekey][nodeWork[poolId][nodekey].length - 1].leaveTime = block.timestamp;
+        uint256 leaveTime = block.timestamp;
+        if (pools[poolId].status == PoolStatus.COMPLETED) {
+            leaveTime = pools[poolId].endTime;
+        }
+        nodeWork[poolId][nodekey][nodeWork[poolId][nodekey].length - 1].leaveTime = leaveTime;
     }
 
     function _addJoinTime(uint256 poolId, address nodekey) private {
-        nodeWork[poolId][nodekey].push(WorkInterval({poolId: 0, joinTime: block.timestamp, leaveTime: 0}));
+        nodeWork[poolId][nodekey].push(WorkInterval({joinTime: block.timestamp, leaveTime: 0}));
     }
 }

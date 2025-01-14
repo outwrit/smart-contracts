@@ -55,7 +55,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControl {
         cn.computeUnits = uint32(computeUnits);
         cn.specsURI = specsURI;
         cn.benchmarkScore = 0;
-        cn.isActive = true;
+        cn.isActive = false;
         cn.subkey = subkey;
         cp.nodes.push(cn);
         uint256 index = cp.nodes.length - 1;
