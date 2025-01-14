@@ -163,6 +163,7 @@ forge test --via-ir -vvv
 ### Run Locally
 
 ```shell
+# start a local chain
 anvil
 
 # in a new terminal
