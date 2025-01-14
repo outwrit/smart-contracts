@@ -85,7 +85,6 @@ contract PrimeNetwork is AccessControl {
         returns (uint256)
     {
         uint256 domainId = domainRegistry.create(domainName, computePool, validationLogic, domainURI);
-        emit DomainCreated(domainName, domainId);
         return domainId;
     }
 
