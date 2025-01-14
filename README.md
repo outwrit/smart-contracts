@@ -170,11 +170,21 @@ foundryup
 ### Build
 
 ```shell
-$ forge build --via-ir
+forge build --via-ir
 ```
 
 ### Test
 
 ```shell
-$ forge test --via-ir -vvv
+forge test --via-ir -vvv
+```
+
+### Run Locally
+
+```shell
+# start a local chain
+anvil
+
+# in a new terminal
+./deploy.sh
 ```
