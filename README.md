@@ -167,6 +167,5 @@ forge test --via-ir -vvv
 anvil
 
 # in a new terminal
-export PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 # private key for local anvil chain
-forge script script/Deploy.s.sol:DeployScript --rpc-url localhost:8545 --broadcast --via-ir
+./deploy.sh
 ```

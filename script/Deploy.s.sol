@@ -11,41 +11,31 @@ import "../src/StakeManager.sol";
 
 contract DeployScript is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_FEDERATOR");
         address deployer = vm.addr(deployerPrivateKey);
+        uint256 validatorPrivateKey = vm.envUint("PRIVATE_KEY_VALIDATOR");
+        address validator = vm.addr(validatorPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy AIToken first
         AIToken aiToken = new AIToken("AI Token", "AI");
 
-        // Deploy core registries with deployer as admin
-        ComputeRegistry computeRegistry = new ComputeRegistry(deployer);
-        DomainRegistry domainRegistry = new DomainRegistry(deployer);
-
-        // Deploy StakeManager with deployer as admin
-        StakeManager stakeManager = new StakeManager(deployer, 7 days, aiToken);
-
-        // Deploy PrimeNetwork with deployer as both federator and validator
+        // Deploy PrimeNetwork
         PrimeNetwork primeNetwork = new PrimeNetwork(
             deployer, // federator
-            deployer, // validator
+            validator, // validator
             aiToken
         );
+
+        // Deploy core registries with deployer as admin
+        ComputeRegistry computeRegistry = new ComputeRegistry(address(primeNetwork));
+        DomainRegistry domainRegistry = new DomainRegistry(address(primeNetwork));
+
+        // Deploy StakeManager with deployer as admin
+        StakeManager stakeManager = new StakeManager(address(primeNetwork), 7 days, aiToken);
 
         // Deploy ComputePool with deployer as admin
-        ComputePool computePool = new ComputePool(
-            deployer, // primeAdmin
-            domainRegistry,
-            computeRegistry,
-            aiToken
-        );
-
-        // Grant PRIME_ROLE to PrimeNetwork in all contracts
-        bytes32 PRIME_ROLE = keccak256("PRIME_ROLE");
-        computeRegistry.grantRole(PRIME_ROLE, address(primeNetwork));
-        domainRegistry.grantRole(PRIME_ROLE, address(primeNetwork));
-        stakeManager.grantRole(PRIME_ROLE, address(primeNetwork));
-        computePool.grantRole(PRIME_ROLE, address(primeNetwork));
+        ComputePool computePool = new ComputePool(address(primeNetwork), domainRegistry, computeRegistry, aiToken);
 
         // Set up module addresses in PrimeNetwork
         primeNetwork.setModuleAddresses(
@@ -53,7 +43,7 @@ contract DeployScript is Script {
         );
 
         // Optional: Set up initial parameters
-        stakeManager.setStakeMinimum(100 * 1e18); // 100 tokens minimum stake
+        primeNetwork.setStakeMinimum(100 * 1e18); // 100 tokens minimum stake
 
         // Optional: Mint some initial tokens to the deployer
         aiToken.mint(deployer, 1000000 * 1e18); // 1M tokens
