@@ -13,6 +13,7 @@ import {IDomainRegistry} from "../src/interfaces/IDomainRegistry.sol";
 import {IWorkValidation} from "../src/interfaces/IWorkValidation.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 contract PrimeNetworkTest is Test {
     using ECDSA for bytes32;
@@ -360,6 +361,42 @@ contract PrimeNetworkTest is Test {
 
         withdrawStake(provider_good1);
         assertEq(AI.balanceOf(provider_good1), 1000);
+    }
+
+    function test_noNodeOwnedByMultipleProviders() public {
+        addProvider(provider_good1);
+        addProvider(provider_good2);
+
+        addNode(provider_good1, node_good1, node_good1_sk);
+        // should revert as node is already owned by provider_good1
+        vm.expectRevert();
+        addNode(provider_good2, node_good1, node_good1_sk);
+    }
+
+    function test_registerWithPermit() public {
+        address provider_permit;
+        uint256 provider_permit_sk;
+        (provider_permit, provider_permit_sk) = makeAddrAndKey("provider_permit");
+        bytes32 DOMAIN_SEPARATOR;
+        bytes32 PERMIT_TYPEHASH =
+            keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        DOMAIN_SEPARATOR = AI.DOMAIN_SEPARATOR();
+
+        vm.startPrank(federator);
+        AI.mint(provider_permit, 100);
+        vm.startPrank(provider_permit);
+        address owner = provider_permit;
+        address spender = address(primeNetwork);
+        uint256 value = 10;
+        uint256 deadline = block.timestamp + 1000;
+        uint256 nonce = AI.nonces(provider_good1);
+        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonce, deadline));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
+
+        // Sign the digest
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(provider_permit_sk, digest);
+        bytes memory signature = abi.encode(r, s, v);
+        primeNetwork.registerProviderWithPermit(value, deadline, signature);
     }
 
     function test_computePoolFlow() public {

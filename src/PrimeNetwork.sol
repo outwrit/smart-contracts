@@ -107,7 +107,7 @@ contract PrimeNetwork is AccessControl {
         address provider = msg.sender;
         bool success = computeRegistry.register(provider);
         require(success, "Provider registration failed");
-        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+        (bytes32 r, bytes32 s, uint8 v) = abi.decode(signature, (bytes32, bytes32, uint8));
         IERC20Permit(address(AIToken)).permit(msg.sender, address(this), stake, deadline, v, r, s);
         AIToken.transferFrom(msg.sender, address(this), stake);
         AIToken.approve(address(stakeManager), stake);
