@@ -7,6 +7,8 @@ event Unstake(address staker, uint256 amount);
 
 event Withdraw(address staker, uint256 amount);
 
+event Slashed(address staker, uint256 amount, bytes reason);
+
 event UpdateUnbondingPeriod(uint256 period);
 
 event StakeMinimumUpdate(uint256 minimum);
@@ -20,7 +22,7 @@ interface IStakeManager {
     function stake(address staker, uint256 amount) external;
     function unstake(address staker, uint256 amount) external;
     function withdraw() external;
-    function slash(address staker, uint256 amount, bytes calldata reason) external;
+    function slash(address staker, uint256 amount, bytes calldata reason) external returns (uint256 slashed);
 
     function setUnbondingPeriod(uint256 period) external;
     function setStakeMinimum(uint256 minimum) external;

@@ -6,6 +6,7 @@ import "./interfaces/IStakeManager.sol";
 import "./interfaces/IDomainRegistry.sol";
 import "./interfaces/IWorkValidation.sol";
 import "./interfaces/IComputePool.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -97,6 +98,20 @@ contract PrimeNetwork is AccessControl {
         emit ProviderRegistered(provider, stake);
     }
 
+    function registerProviderWithPermit(uint256 stake, uint256 deadline, bytes memory signature) external {
+        uint256 stakeMinimum = stakeManager.getStakeMinimum();
+        require(stake >= stakeMinimum, "Stake amount is below minimum");
+        address provider = msg.sender;
+        bool success = computeRegistry.register(provider);
+        require(success, "Provider registration failed");
+        (uint8 v, bytes32 r, bytes32 s) = abi.decode(signature, (uint8, bytes32, bytes32));
+        IERC20Permit(address(AIToken)).permit(msg.sender, address(this), stake, deadline, v, r, s);
+        AIToken.transferFrom(msg.sender, address(this), stake);
+        AIToken.approve(address(stakeManager), stake);
+        stakeManager.stake(provider, stake);
+        emit ProviderRegistered(provider, stake);
+    }
+
     function deregisterProvider(address provider) external {
         require(hasRole(VALIDATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
         require(computeRegistry.getProvider(provider).activeNodes == 0, "Provider has active nodes");
@@ -121,6 +136,11 @@ contract PrimeNetwork is AccessControl {
         require(hasRole(VALIDATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
         computeRegistry.removeComputeNode(provider, nodekey);
         emit ComputeNodeRemoved(provider, nodekey);
+    }
+
+    function slash(address provider, uint256 amount, bytes calldata reason) external onlyRole(VALIDATOR_ROLE) {
+        uint256 slashed = stakeManager.slash(provider, amount, reason);
+        AIToken.transfer(msg.sender, slashed);
     }
 
     function _verifyNodekeySignature(address provider, address nodekey, bytes memory signature)

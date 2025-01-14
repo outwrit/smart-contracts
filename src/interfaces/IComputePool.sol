@@ -6,11 +6,15 @@ import "./IRewardsDistributor.sol";
 
 event ComputePoolCreated(uint256 indexed poolId, uint256 indexed domainId, address indexed creator);
 
-event ComputePoolFunded(uint256 indexed poolId, uint256 amount);
+event ComputePoolStarted(uint256 indexed poolId, uint256 timestamp);
 
 event ComputePoolEnded(uint256 indexed poolId);
 
 event ComputePoolURIUpdated(uint256 indexed poolId, string uri);
+
+event ComputePoolJoined(uint256 indexed poolId, address indexed provider, address[] nodekeys);
+
+event ComputePoolLeft(uint256 indexed poolId, address indexed provider, address nodekey);
 
 interface IComputePool {
     enum PoolStatus {

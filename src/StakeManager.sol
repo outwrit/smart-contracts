@@ -66,13 +66,54 @@ contract StakeManager is IStakeManager, AccessControl {
         emit Withdraw(msg.sender, amount);
     }
 
-    function slash(address staker, uint256 amount, bytes calldata reason) external onlyRole(PRIME_ROLE) {
-        require(_stakes[staker] >= amount, "StakeManager: insufficient balance");
+    function slash(address staker, uint256 amount, bytes calldata reason)
+        external
+        onlyRole(PRIME_ROLE)
+        returns (uint256 slashed)
+    {
         reason.length == 0; // silence warning
-        _stakes[staker] -= amount;
-        _totalStaked -= amount;
-        AIToken.transfer(msg.sender, amount);
-        emit Unstake(staker, amount);
+        if (_stakes[staker] <= amount) {
+            // look in pending unbonds
+            uint256 unbonding_amount = 0;
+            UnbondTracker storage pending = _unbonds[staker];
+            for (uint256 i = pending.offset; i < pending.unbonds.length; i++) {
+                if (pending.unbonds[i].timestamp <= block.timestamp) {
+                    unbonding_amount += pending.unbonds[i].amount;
+                    if (unbonding_amount > amount) {
+                        // slash the difference
+                        uint256 diff = unbonding_amount - amount;
+                        pending.unbonds[i].amount -= diff;
+                        break;
+                    } else if (unbonding_amount == amount) {
+                        // slash the whole unbond
+                        delete pending.unbonds[i];
+                        break;
+                    } else {
+                        // slash the whole unbond and continue
+                        delete pending.unbonds[i];
+                    }
+                }
+            }
+            if (unbonding_amount < amount) {
+                // slash the remaining amount from the stake
+                uint256 amount_left = unbonding_amount - amount;
+                if (_stakes[staker] < amount_left) {
+                    amount_left = _stakes[staker];
+                }
+                _stakes[staker] -= amount_left;
+                _totalStaked -= amount_left;
+                uint256 total = amount_left + unbonding_amount;
+                AIToken.transfer(msg.sender, total);
+                emit Slashed(staker, total, reason);
+                return total;
+            }
+        } else {
+            _stakes[staker] -= amount;
+            _totalStaked -= amount;
+            AIToken.transfer(msg.sender, amount);
+            emit Slashed(staker, amount, reason);
+            return amount;
+        }
     }
 
     function setUnbondingPeriod(uint256 period) external onlyRole(PRIME_ROLE) {

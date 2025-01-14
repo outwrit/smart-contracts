@@ -84,6 +84,8 @@ contract ComputePool is IComputePool, AccessControl {
 
         poolIdCounter++;
 
+        emit ComputePoolCreated(poolIdCounter - 1, domainId, msg.sender);
+
         return poolIdCounter - 1;
     }
 
@@ -94,6 +96,8 @@ contract ComputePool is IComputePool, AccessControl {
 
         pools[poolId].startTime = block.timestamp;
         pools[poolId].status = PoolStatus.ACTIVE;
+
+        emit ComputePoolStarted(poolId, block.timestamp);
     }
 
     function endComputePool(uint256 poolId) external {
@@ -103,6 +107,8 @@ contract ComputePool is IComputePool, AccessControl {
 
         pools[poolId].endTime = block.timestamp;
         pools[poolId].status = PoolStatus.COMPLETED;
+
+        emit ComputePoolEnded(poolId);
     }
 
     function joinComputePool(uint256 poolId, address provider, address[] memory nodekey, bytes[] memory signatures)
@@ -138,6 +144,7 @@ contract ComputePool is IComputePool, AccessControl {
             providerActiveNodes[poolId][provider]++;
             computeRegistry.updateNodeStatus(provider, nodekey[i], true);
         }
+        emit ComputePoolJoined(poolId, provider, nodekey);
     }
 
     function leaveComputePool(uint256 poolId, address provider, address nodekey) external {
@@ -158,6 +165,7 @@ contract ComputePool is IComputePool, AccessControl {
                     pools[poolId].totalCompute -= node.computeUnits;
                     providerActiveNodes[poolId][provider]--;
                     computeRegistry.updateNodeStatus(provider, nodes[i], false);
+                    emit ComputePoolLeft(poolId, provider, nodes[i]);
                 }
                 unchecked {
                     ++i;
@@ -172,6 +180,7 @@ contract ComputePool is IComputePool, AccessControl {
                     pools[poolId].totalCompute -= node.computeUnits;
                     providerActiveNodes[poolId][provider]--;
                     computeRegistry.updateNodeStatus(provider, nodekey, false);
+                    emit ComputePoolLeft(poolId, provider, nodekey);
                 }
             }
         }
@@ -210,6 +219,8 @@ contract ComputePool is IComputePool, AccessControl {
         require(pools[poolId].creator == msg.sender, "ComputePool: only creator can update pool URI");
 
         pools[poolId].poolDataURI = poolDataURI;
+
+        emit ComputePoolURIUpdated(poolId, poolDataURI);
     }
 
     function blacklistProvider(uint256 poolId, address provider) external {
