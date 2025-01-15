@@ -48,6 +48,7 @@ contract PrimeNetworkTest is Test {
     function setUp() public {
         federator = makeAddr("federator");
         validator = makeAddr("validator");
+        //console.log(federator, validator);
         startHoax(federator);
         AI = new AIToken("Prime Intellect", "AI");
         primeNetwork = new PrimeNetwork(federator, validator, AI);

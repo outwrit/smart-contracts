@@ -41,6 +41,7 @@ contract RewardsDistributor is AccessControl {
         rewardToken = IERC20(computePool.getRewardToken());
         lastUpdateTime = block.timestamp;
         _grantRole(COMPUTE_POOL_ROLE, address(computePool));
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function _updateGlobalIndex() internal {
