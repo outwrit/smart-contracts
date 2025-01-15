@@ -56,6 +56,12 @@ contract RewardsDistributorTest is Test {
     address public nodeProvider = address(0x3);
     address public node = address(0x4);
 
+    // Additional nodes/providers
+    address public node1 = address(0x5);
+    address public node2 = address(0x6);
+    address public nodeProvider1 = address(0x7);
+    address public nodeProvider2 = address(0x8);
+
     function setUp() public {
         // 1. Deploy a mock token & mint an initial supply
         mockRewardToken = new MockERC20("MockToken", "MTK");
@@ -86,6 +92,8 @@ contract RewardsDistributorTest is Test {
 
         // 7. Set up the node-provider relationship in the registry
         mockComputeRegistry.setNodeProvider(node, nodeProvider);
+        mockComputeRegistry.setNodeProvider(node1, nodeProvider1);
+        mockComputeRegistry.setNodeProvider(node2, nodeProvider2);
     }
 
     /// ---------------------------------------
@@ -237,5 +245,146 @@ contract RewardsDistributorTest is Test {
         // 1 token/sec total / 10 computeUnits => 0.1 token/sec per unit * 10 units = 1 token/sec total
         // => 5 seconds => 5 tokens
         assertEq(nodeBalance, 5 ether);
+    }
+
+    /// ---------------------------------------
+    /// TEST: Multiple Nodes
+    /// ---------------------------------------
+    ///
+    /// Node1 joins at t=0, Node2 joins at t=15
+    /// We'll set rewardRate=10 tokens/sec to illustrate
+    function testMultipleNodes() public {
+        // 1. Manager sets reward rate = 10 tokens/sec
+        vm.prank(manager);
+        distributor.setRewardRate(10 ether);
+
+        // 2. Node1 joins at t=0 with 10 computeUnits
+        vm.prank(address(mockComputePool));
+        distributor.joinPool(node1, 10);
+
+        // Warp 15s => now t=15
+        skip(15);
+
+        // 3. Node2 joins at t=15, with 10 computeUnits as well
+        vm.prank(address(mockComputePool));
+        distributor.joinPool(node2, 10);
+
+        // Warp another 15s => now t=30
+        skip(15);
+        // 4. Let both nodes claim
+        //    We'll do it from their providers
+        vm.startPrank(nodeProvider1);
+        distributor.claimRewards(node1);
+        vm.stopPrank();
+
+        vm.startPrank(nodeProvider2);
+        distributor.claimRewards(node2);
+        vm.stopPrank();
+
+        // 5. Check balances
+        uint256 node1Balance = mockRewardToken.balanceOf(node1);
+        uint256 node2Balance = mockRewardToken.balanceOf(node2);
+
+        // Explanation of the math (given integer division in the contract):
+        //
+        // For the first 15s (t=0 to t=15), only Node1 is in the pool with 10 CU.
+        //   rewardRate = 10 tokens/sec => total = 10 * 15 = 150 tokens
+        //   totalActiveComputeUnits = 10 => additionalIndex = 150 / 10 = 15
+        //   => Node1’s unclaimed = 15 * 10 = 150 (no leftover in that step).
+        //
+        // Then Node2 joins at t=15, so totalActiveComputeUnits=20.
+        // Next 15s (t=15 to t=30):
+        //   rewardRate = 10 tokens/sec => total = 10 * 15 = 150 tokens
+        //   totalActiveComputeUnits = 20 => additionalIndex = 150 / 20 = 7.5
+        //   => each unit gets 7.5 more tokens
+        //      => Node1 has 10 CU => +75
+        //      => Node2 has 10 CU => +75
+        //
+        // So, final unclaimed before claiming:
+        //   Node1: 150 + 75 = 225
+        //   Node2: 0 + 75 = 75
+        //
+        // After claim, that’s the token balances:
+        assertEq(node1Balance, 225 ether, "Node1 balance mismatch");
+        assertEq(node2Balance, 75 ether, "Node2 balance mismatch");
+    }
+
+    /// ---------------------------------------
+    /// TEST: Multiple Reward Rates
+    /// ---------------------------------------
+    ///
+    /// 1) Node1 joins with 10 CU under rate=50 tokens/sec
+    /// 2) Warp 10s
+    /// 3) Manager updates reward rate to 100 tokens/sec
+    /// 4) Warp 10s more
+    /// 5) Node2 joins with 5 CU
+    /// 6) Warp 10s more
+    /// 7) Claim for both => see correct distribution
+    function testMultipleRewardRates() public {
+        // Step 1: set initial rate = 50 tokens/sec
+        vm.prank(manager);
+        distributor.setRewardRate(50 ether);
+
+        // Node1 joins with 10 computeUnits
+        vm.prank(address(mockComputePool));
+        distributor.joinPool(node1, 10);
+
+        // Warp 10s => Node1 accumulates at 50 tokens/sec
+        skip(10);
+
+        // Step 3: Manager updates reward rate to 100 tokens/sec
+        vm.prank(manager);
+        distributor.setRewardRate(100 ether);
+
+        // Warp 10s more => Node1 gets 100 tokens/sec for those 10s
+        skip(10);
+
+        // Step 5: Node2 joins with 5 computeUnits
+        vm.prank(address(mockComputePool));
+        distributor.joinPool(node2, 5);
+
+        // Warp 10s more => Now Node1(10 CU) & Node2(5 CU) share 100 tokens/sec
+        skip(10);
+
+        // Step 7: Claim for both from their respective providers
+        vm.startPrank(nodeProvider1);
+        distributor.claimRewards(node1);
+        vm.stopPrank();
+
+        vm.startPrank(nodeProvider2);
+        distributor.claimRewards(node2);
+        vm.stopPrank();
+
+        uint256 node1Bal = mockRewardToken.balanceOf(node1);
+        uint256 node2Bal = mockRewardToken.balanceOf(node2);
+
+        // Let’s break down the rewards in each time segment:
+        //
+        // Segment A (t=0 -> t=10):
+        //   rate = 50 tokens/sec, Node1 only with 10 CU
+        //   => total = 50 * 10 = 500 tokens
+        //   => totalActiveComputeUnits = 10 => additionalIndex = 500 / 10 = 50
+        //   => Node1 accumulates 50 * 10 = 500
+        //
+        // Segment B (t=10 -> t=20):
+        //   rate = 100 tokens/sec, Node1 only with 10 CU
+        //   => total = 100 * 10 = 1000 tokens
+        //   => totalActiveComputeUnits = 10 => additionalIndex = 1000 / 10 = 100
+        //   => Node1 accumulates + (100 * 10) = 1000
+        //   => So Node1 total so far = 500 + 1000 = 1500
+        //
+        // Segment C (t=20 -> t=30):
+        //   rate = 100 tokens/sec, Node1(10 CU) + Node2(5 CU) => total = 15 CU
+        //   => total = 100 * 10 = 1000 tokens
+        //   => additionalIndex = 1000 / 15 = 66.666...
+        //   => Node1 gets 66.666... * 10 = 666.666...
+        //   => Node2 gets 66.666... * 5  = 333.333...
+        //
+        // Final expected:
+        //   Node1: 1500 + 666.666... = 2166.666...
+        //   Node2: 0 + 333.333...    = 333.333...
+        //
+        assertEq(node1Bal, 2166.66666666666666666 ether, "Node1 final balance mismatch");
+        assertEq(node2Bal, 333.33333333333333333 ether, "Node2 final balance mismatch");
     }
 }

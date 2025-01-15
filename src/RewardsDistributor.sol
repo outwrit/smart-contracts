@@ -128,6 +128,39 @@ contract RewardsDistributor is AccessControl {
         rewardToken.transfer(node, payableAmount);
     }
 
+    function calculateRewards(address node) external view returns (uint256) {
+        NodeData memory nd = nodeInfo[node];
+
+        // If the node has never joined, or there are no active computeUnits in total, no extra rewards to calculate.
+        if (!nd.isActive && nd.unclaimedRewards == 0) {
+            return 0;
+        }
+
+        // 1. Calculate how many rewards would be distributed if we updated the global index now
+        uint256 timeDelta = block.timestamp - lastUpdateTime;
+        uint256 rewardToDistribute = timeDelta * rewardRatePerSecond;
+
+        // 2. Compute what the global reward index would be if we updated it this instant
+        //    (without actually storing it).
+        uint256 hypotheticalGlobalIndex = globalRewardIndex;
+        if (totalActiveComputeUnits > 0) {
+            uint256 additionalIndex = rewardToDistribute / totalActiveComputeUnits;
+            hypotheticalGlobalIndex += additionalIndex;
+        }
+
+        // 3. Start from node's stored unclaimedRewards
+        uint256 pending = nd.unclaimedRewards;
+
+        // 4. If node is active, add newly accrued portion
+        if (nd.isActive) {
+            uint256 indexDelta = hypotheticalGlobalIndex - nd.nodeRewardIndex;
+            uint256 newlyAccrued = indexDelta * nd.computeUnits;
+            pending += newlyAccrued;
+        }
+
+        return pending;
+    }
+
     function endRewards() external onlyRole(COMPUTE_POOL_ROLE) {
         _updateGlobalIndex();
         endTime = block.timestamp;
