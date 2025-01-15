@@ -12,6 +12,8 @@ event ComputePoolEnded(uint256 indexed poolId);
 
 event ComputePoolURIUpdated(uint256 indexed poolId, string uri);
 
+event ComputePoolLimitUpdated(uint256 indexed poolId, uint256 limit);
+
 event ComputePoolJoined(uint256 indexed poolId, address indexed provider, address[] nodekeys);
 
 event ComputePoolLeft(uint256 indexed poolId, address indexed provider, address nodekey);
@@ -39,6 +41,7 @@ interface IComputePool {
         string poolDataURI;
         address poolValidationLogic;
         uint256 totalCompute;
+        uint256 computeLimit;
         PoolStatus status;
     }
 
@@ -51,7 +54,8 @@ interface IComputePool {
         uint256 domainId,
         address computeManagerKey,
         string calldata poolName,
-        string calldata poolDataURI
+        string calldata poolDataURI,
+        uint256 computeLimit
     ) external returns (uint256);
     function startComputePool(uint256 poolId) external;
     function endComputePool(uint256 poolId) external;
@@ -65,6 +69,7 @@ interface IComputePool {
         bytes[] memory signatures
     ) external;
     function updateComputePoolURI(uint256 poolId, string calldata poolDataURI) external;
+    function updateComputeLimit(uint256 poolId, uint256 computeLimit) external;
     function blacklistProvider(uint256 poolId, address provider) external;
     function blacklistNode(uint256 poolId, address provider, address nodekey) external;
     function getComputePool(uint256 poolId) external view returns (PoolInfo memory);
@@ -72,4 +77,5 @@ interface IComputePool {
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory);
     function getNodeWork(uint256 poolId, address nodekey) external view returns (WorkInterval[] memory);
     function getProviderActiveNodesInPool(uint256 poolId, address provider) external view returns (uint256);
+    function getRewardToken() external view returns (address);
 }

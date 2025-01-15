@@ -5,42 +5,130 @@ import "./interfaces/IRewardsDistributor.sol";
 import "./interfaces/IComputePool.sol";
 import "./interfaces/IComputeRegistry.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract RewardsDistributor {
+contract RewardsDistributor is AccessControl {
+    bytes32 public constant REWARDS_MANAGER_ROLE = keccak256("REWARDS_MANAGER_ROLE");
+    bytes32 public constant COMPUTE_POOL_ROLE = keccak256("COMPUTE_POOL_ROLE");
     IComputePool public computePool;
     IComputeRegistry public computeRegistry;
     uint256 public poolId;
-    mapping(address => uint256) public lastClaimed;
-    IERC20 public AIToken;
-    uint256 public rewardRate;
+    IERC20 public rewardToken; // Placeholder
+
+    uint256 public rewardRatePerSecond; // Adjustable reward rate
+    uint256 public globalRewardIndex; // Cumulative reward per computeUnit
+    uint256 public lastUpdateTime; // Last time we updated globalRewardIndex
+    uint256 public totalActiveComputeUnits;
+    uint256 public endTime;
+
+    struct NodeData {
+        uint256 computeUnits;
+        uint256 nodeRewardIndex; // Snapshot of globalRewardIndex at the time of last update
+        uint256 unclaimedRewards; // Accumulated but not claimed
+        bool isActive;
+    }
+
+    mapping(address => NodeData) public nodeInfo;
 
     constructor(IComputePool _computePool, IComputeRegistry _computeRegistry, uint256 _poolId) {
         computePool = _computePool;
         computeRegistry = _computeRegistry;
         poolId = _poolId;
+        rewardRatePerSecond = 0;
+        globalRewardIndex = 0;
+        lastUpdateTime = block.timestamp;
+        totalActiveComputeUnits = 0;
+        rewardToken = IERC20(computePool.getRewardToken());
+        lastUpdateTime = block.timestamp;
+        _grantRole(COMPUTE_POOL_ROLE, address(computePool));
     }
 
-    function claimRewards(address provider, address nodekey) external {
-        IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodekey);
-        require(node.provider == msg.sender, "Only provider can claim rewards");
-        IComputePool.WorkInterval[] memory nodeWork = computePool.getNodeWork(poolId, nodekey);
-        uint256 totalTime = 0;
-        uint256 latestNewClaim = 0;
-
-        for (uint256 i = nodeWork.length - 1; i >= 0; i--) {
-            IComputePool.WorkInterval memory workSpan = nodeWork[i];
-            if (nodeWork[i].leaveTime > lastClaimed[nodekey]) {
-                totalTime += workSpan.leaveTime - workSpan.joinTime;
-                latestNewClaim = workSpan.leaveTime;
-            } else {
-                break;
-            }
+    function _updateGlobalIndex() internal {
+        if (endTime > 0) {
+            return; // no update if ended
+        }
+        uint256 currentTime = block.timestamp;
+        if (currentTime == lastUpdateTime) {
+            return; // no update if no time passed
         }
 
-        lastClaimed[nodekey] = latestNewClaim;
+        uint256 timeDelta = currentTime - lastUpdateTime;
+        // e.g. timeDelta * rewardRatePerSecond
+        uint256 rewardToDistribute = timeDelta * rewardRatePerSecond;
 
-        uint256 reward = totalTime * rewardRate * node.computeUnits;
+        if (totalActiveComputeUnits > 0) {
+            uint256 additionalIndex = rewardToDistribute / totalActiveComputeUnits;
+            globalRewardIndex += additionalIndex;
+        }
 
-        emit RewardsClaimed(poolId, provider, nodekey, reward);
+        lastUpdateTime = currentTime;
+    }
+
+    // Change the emission rate
+    function setRewardRate(uint256 newRate) external onlyRole(REWARDS_MANAGER_ROLE) {
+        _updateGlobalIndex();
+        rewardRatePerSecond = newRate;
+    }
+
+    // Node joining
+    function joinPool(address node, uint256 nodeComputeUnits) external onlyRole(COMPUTE_POOL_ROLE) {
+        if (endTime > 0) {
+            return; // no joining if ended
+        }
+        // Possibly require validations, checks, etc.
+        _updateGlobalIndex();
+
+        NodeData storage nd = nodeInfo[node];
+        require(!nd.isActive, "Node already active");
+
+        // Synchronize node index with the current global
+        nd.nodeRewardIndex = globalRewardIndex;
+        nd.computeUnits = nodeComputeUnits;
+        nd.isActive = true;
+        totalActiveComputeUnits += nodeComputeUnits;
+    }
+
+    // Node leaving
+    function leavePool(address node) external onlyRole(COMPUTE_POOL_ROLE) {
+        _updateGlobalIndex();
+
+        NodeData storage nd = nodeInfo[node];
+        require(nd.isActive, "Node not active");
+
+        // Calculate newly accrued since last time
+        uint256 delta = globalRewardIndex - nd.nodeRewardIndex;
+        nd.unclaimedRewards += (delta * nd.computeUnits);
+
+        // Remove from totals
+        totalActiveComputeUnits -= nd.computeUnits;
+        nd.isActive = false;
+        nd.computeUnits = 0;
+        nd.nodeRewardIndex = 0; // optional reset
+    }
+
+    // Claim
+    function claimRewards(address node) external {
+        _updateGlobalIndex();
+        require(msg.sender == computeRegistry.getNodeProvider(node), "Unauthorized");
+
+        NodeData storage nd = nodeInfo[node];
+
+        // If still active, sync the newest portion
+        if (nd.isActive) {
+            uint256 delta = globalRewardIndex - nd.nodeRewardIndex;
+            nd.unclaimedRewards += (delta * nd.computeUnits);
+            nd.nodeRewardIndex = globalRewardIndex;
+        }
+
+        uint256 payableAmount = nd.unclaimedRewards;
+        nd.unclaimedRewards = 0;
+
+        // Transfer out (require contract has enough tokens)
+        rewardToken.transfer(node, payableAmount);
+    }
+
+    function endRewards() external onlyRole(COMPUTE_POOL_ROLE) {
+        _updateGlobalIndex();
+        endTime = block.timestamp;
     }
 }

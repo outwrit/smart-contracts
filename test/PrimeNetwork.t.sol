@@ -142,7 +142,7 @@ contract PrimeNetworkTest is Test {
 
     function newPool(uint256 domainId, string memory name, string memory uri) public returns (uint256) {
         vm.startPrank(pool_creator);
-        return computePool.createComputePool(domainId, computeManager, name, uri);
+        return computePool.createComputePool(domainId, computeManager, name, uri, 0);
     }
 
     function startPool(uint256 poolId) public {
@@ -435,7 +435,7 @@ contract PrimeNetworkTest is Test {
         vm.startPrank(pool_creator);
         // create compute pool
         uint256 poolId = computePool.createComputePool(
-            domainId, computeManager, "INTELLECT-2", "https://primeintellect.ai/pools/intellect-2"
+            domainId, computeManager, "INTELLECT-2", "https://primeintellect.ai/pools/intellect-2", 0
         );
         computePool.startComputePool(poolId);
         // invite node to join pool

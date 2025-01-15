@@ -20,7 +20,6 @@ contract ComputePool is IComputePool, AccessControl {
     uint256 public poolIdCounter;
     IComputeRegistry public computeRegistry;
     IDomainRegistry public domainRegistry;
-    RewardsDistributor public rewardsDistributor;
     IERC20 public AIToken;
 
     mapping(uint256 => mapping(address => WorkInterval[])) public nodeWork;
@@ -31,6 +30,8 @@ contract ComputePool is IComputePool, AccessControl {
 
     mapping(uint256 => EnumerableSet.AddressSet) private _blacklistedProviders;
     mapping(uint256 => EnumerableSet.AddressSet) private _blacklistedNodes;
+
+    mapping(uint256 => RewardsDistributor) public rewardsDistributorMap;
 
     constructor(
         address _primeAdmin,
@@ -73,7 +74,8 @@ contract ComputePool is IComputePool, AccessControl {
         uint256 domainId,
         address computeManagerKey,
         string calldata poolName,
-        string calldata poolDataURI
+        string calldata poolDataURI,
+        uint256 computeLimit
     ) external returns (uint256) {
         require(domainRegistry.get(domainId).domainId == domainId, "ComputePool: domain does not exist");
 
@@ -89,10 +91,12 @@ contract ComputePool is IComputePool, AccessControl {
             poolDataURI: poolDataURI,
             poolValidationLogic: address(0),
             totalCompute: 0,
+            computeLimit: computeLimit,
             status: PoolStatus.PENDING
         });
 
-        rewardsDistributor = new RewardsDistributor(IComputePool(address(this)), computeRegistry, poolIdCounter);
+        rewardsDistributorMap[poolIdCounter] =
+            new RewardsDistributor(IComputePool(address(this)), computeRegistry, poolIdCounter);
 
         poolIdCounter++;
 
@@ -150,8 +154,13 @@ contract ComputePool is IComputePool, AccessControl {
                 ),
                 "ComputePool: invalid invite"
             );
+            uint256 addedCompute = pools[poolId].totalCompute + node.computeUnits;
+            if (pools[poolId].computeLimit > 0) {
+                require(addedCompute < pools[poolId].computeLimit, "ComputePool: pool is at capacity");
+            }
             _poolNodes[poolId].add(nodekey[i]);
             _addJoinTime(poolId, nodekey[i]);
+            rewardsDistributorMap[poolId].joinPool(nodekey[i], node.computeUnits);
             pools[poolId].totalCompute += node.computeUnits;
             providerActiveNodes[poolId][provider]++;
             computeRegistry.updateNodeStatus(provider, nodekey[i], true);
@@ -172,6 +181,7 @@ contract ComputePool is IComputePool, AccessControl {
                     _poolNodes[poolId].remove(nodes[i]);
                     // Mark last interval's leaveTime
                     _updateLeaveTime(poolId, nodes[i]);
+                    rewardsDistributorMap[poolId].leavePool(nodes[i]);
                     pools[poolId].totalCompute -= node.computeUnits;
                     providerActiveNodes[poolId][provider]--;
                     computeRegistry.updateNodeStatus(provider, nodes[i], false);
@@ -184,6 +194,7 @@ contract ComputePool is IComputePool, AccessControl {
             if (node.provider == provider) {
                 if (_poolNodes[poolId].remove(nodekey)) {
                     _updateLeaveTime(poolId, nodekey);
+                    rewardsDistributorMap[poolId].leavePool(nodekey);
                     pools[poolId].totalCompute -= node.computeUnits;
                     providerActiveNodes[poolId][provider]--;
                     computeRegistry.updateNodeStatus(provider, nodekey, false);
@@ -230,6 +241,15 @@ contract ComputePool is IComputePool, AccessControl {
         emit ComputePoolURIUpdated(poolId, poolDataURI);
     }
 
+    function updateComputeLimit(uint256 poolId, uint256 computeLimit) external {
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can update pool limit");
+
+        pools[poolId].computeLimit = computeLimit;
+
+        emit ComputePoolLimitUpdated(poolId, computeLimit);
+    }
+
     function blacklistProvider(uint256 poolId, address provider) external {
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
         require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist provider");
@@ -245,6 +265,7 @@ contract ComputePool is IComputePool, AccessControl {
                 _poolNodes[poolId].remove(nodes[i]);
                 // Mark last interval's leaveTime
                 _updateLeaveTime(poolId, nodes[i]);
+                rewardsDistributorMap[poolId].leavePool(nodes[i]);
                 pools[poolId].totalCompute -= node.computeUnits;
                 providerActiveNodes[poolId][provider]--;
                 computeRegistry.updateNodeStatus(provider, nodes[i], false);
@@ -267,6 +288,7 @@ contract ComputePool is IComputePool, AccessControl {
             IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodekey);
             require(node.provider == provider, "ComputePool: node does not exist");
             _updateLeaveTime(poolId, nodekey);
+            rewardsDistributorMap[poolId].leavePool(nodekey);
             _poolNodes[poolId].remove(nodekey);
             pools[poolId].totalCompute -= node.computeUnits;
             providerActiveNodes[poolId][node.provider]--;
@@ -300,5 +322,9 @@ contract ComputePool is IComputePool, AccessControl {
 
     function getProviderActiveNodesInPool(uint256 poolId, address provider) external view returns (uint256) {
         return providerActiveNodes[poolId][provider];
+    }
+
+    function getRewardToken() external view returns (address) {
+        return address(AIToken);
     }
 }
