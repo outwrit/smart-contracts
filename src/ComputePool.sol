@@ -124,6 +124,8 @@ contract ComputePool is IComputePool, AccessControl {
         pools[poolId].endTime = block.timestamp;
         pools[poolId].status = PoolStatus.COMPLETED;
 
+        rewardsDistributorMap[poolId].endRewards();
+
         emit ComputePoolEnded(poolId);
     }
 

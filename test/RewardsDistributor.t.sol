@@ -165,9 +165,13 @@ contract RewardsDistributorTest is Test {
         (,,, isActive) = distributor.nodeInfo(node);
         assertFalse(isActive);
 
+        // Check that calculateRewards shows the same
+        uint256 calculatedRewards = distributor.calculateRewards(node);
+
         // The unclaimedRewards should have accrued
         (,, uint256 unclaimedRewards,) = distributor.nodeInfo(node);
-        assertGt(unclaimedRewards, 0);
+        assertEq(unclaimedRewards, calculatedRewards);
+        assertGt(unclaimedRewards, 999);
     }
 
     /// ---------------------------------------
@@ -190,6 +194,7 @@ contract RewardsDistributorTest is Test {
         distributor.claimRewards(node);
 
         // 5. Node's provider claims on behalf of that node
+        uint256 calculatedRewards = distributor.calculateRewards(node);
         vm.prank(nodeProvider);
         distributor.claimRewards(node);
 
@@ -212,6 +217,7 @@ contract RewardsDistributorTest is Test {
         //
         // For demonstration, let's just check we got > 0
         assertEq(nodeBalance, 10 ether);
+        assertEq(nodeBalance, calculatedRewards);
     }
 
     /// ---------------------------------------
@@ -237,6 +243,7 @@ contract RewardsDistributorTest is Test {
         vm.warp(block.timestamp + 100);
 
         // Claim
+        uint256 calculatedRewards = distributor.calculateRewards(node);
         vm.prank(nodeProvider);
         distributor.claimRewards(node);
 
@@ -245,6 +252,7 @@ contract RewardsDistributorTest is Test {
         // 1 token/sec total / 10 computeUnits => 0.1 token/sec per unit * 10 units = 1 token/sec total
         // => 5 seconds => 5 tokens
         assertEq(nodeBalance, 5 ether);
+        assertEq(nodeBalance, calculatedRewards);
     }
 
     /// ---------------------------------------
@@ -273,10 +281,12 @@ contract RewardsDistributorTest is Test {
         skip(15);
         // 4. Let both nodes claim
         //    We'll do it from their providers
+        uint256 node1Pending = distributor.calculateRewards(node1);
         vm.startPrank(nodeProvider1);
         distributor.claimRewards(node1);
         vm.stopPrank();
 
+        uint256 node2Pending = distributor.calculateRewards(node2);
         vm.startPrank(nodeProvider2);
         distributor.claimRewards(node2);
         vm.stopPrank();
@@ -284,6 +294,9 @@ contract RewardsDistributorTest is Test {
         // 5. Check balances
         uint256 node1Balance = mockRewardToken.balanceOf(node1);
         uint256 node2Balance = mockRewardToken.balanceOf(node2);
+
+        assertEq(node1Pending, node1Balance, "Node1 pending balance mismatch");
+        assertEq(node2Pending, node2Balance, "Node2 pending balance mismatch");
 
         // Explanation of the math (given integer division in the contract):
         //
@@ -347,16 +360,21 @@ contract RewardsDistributorTest is Test {
         skip(10);
 
         // Step 7: Claim for both from their respective providers
+        uint256 node1Pending = distributor.calculateRewards(node1);
         vm.startPrank(nodeProvider1);
         distributor.claimRewards(node1);
         vm.stopPrank();
 
+        uint256 node2Pending = distributor.calculateRewards(node2);
         vm.startPrank(nodeProvider2);
         distributor.claimRewards(node2);
         vm.stopPrank();
 
         uint256 node1Bal = mockRewardToken.balanceOf(node1);
         uint256 node2Bal = mockRewardToken.balanceOf(node2);
+
+        assertEq(node1Pending, node1Bal, "Node1 pending balance mismatch");
+        assertEq(node2Pending, node2Bal, "Node2 pending balance mismatch");
 
         // Let’s break down the rewards in each time segment:
         //

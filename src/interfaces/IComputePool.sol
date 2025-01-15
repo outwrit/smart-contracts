@@ -50,6 +50,7 @@ interface IComputePool {
         uint256 leaveTime;
     }
 
+    // Note: computeLimit == 0 implies no limit
     function createComputePool(
         uint256 domainId,
         address computeManagerKey,

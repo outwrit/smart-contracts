@@ -130,6 +130,7 @@ contract RewardsDistributor is AccessControl {
 
     function calculateRewards(address node) external view returns (uint256) {
         NodeData memory nd = nodeInfo[node];
+        uint256 timeDelta;
 
         // If the node has never joined, or there are no active computeUnits in total, no extra rewards to calculate.
         if (!nd.isActive && nd.unclaimedRewards == 0) {
@@ -137,7 +138,11 @@ contract RewardsDistributor is AccessControl {
         }
 
         // 1. Calculate how many rewards would be distributed if we updated the global index now
-        uint256 timeDelta = block.timestamp - lastUpdateTime;
+        if (endTime > 0) {
+            timeDelta = endTime - lastUpdateTime;
+        } else {
+            timeDelta = block.timestamp - lastUpdateTime;
+        }
         uint256 rewardToDistribute = timeDelta * rewardRatePerSecond;
 
         // 2. Compute what the global reward index would be if we updated it this instant
