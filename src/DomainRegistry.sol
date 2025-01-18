@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IDomainRegistry.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-contract DomainRegistry is IDomainRegistry, AccessControl {
+contract DomainRegistry is IDomainRegistry, AccessControlEnumerable {
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
 
     Domain[] public domains;

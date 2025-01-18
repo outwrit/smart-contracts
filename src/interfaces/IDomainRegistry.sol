@@ -3,12 +3,13 @@ pragma solidity ^0.8.0;
 
 import "./IWorkValidation.sol";
 import "./IComputePool.sol";
+import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 
 event DomainCreated(string domainName, uint256 domainId);
 
 event DomainUpdated(uint256 domainId, address validationLogic, string domainParametersURI);
 
-interface IDomainRegistry {
+interface IDomainRegistry is IAccessControlEnumerable {
     struct Domain {
         uint256 domainId;
         string name;

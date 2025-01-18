@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IComputeRegistry.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-contract ComputeRegistry is IComputeRegistry, AccessControl {
+contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
     bytes32 public constant COMPUTE_POOL_ROLE = keccak256("COMPUTE_POOL_ROLE");
 

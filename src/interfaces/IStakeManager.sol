@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
+
 event Stake(address staker, uint256 amount);
 
 event Unstake(address staker, uint256 amount);
@@ -13,7 +15,7 @@ event UpdateUnbondingPeriod(uint256 period);
 
 event StakeMinimumUpdate(uint256 minimum);
 
-interface IStakeManager {
+interface IStakeManager is IAccessControlEnumerable {
     struct Unbond {
         uint256 amount;
         uint256 timestamp;

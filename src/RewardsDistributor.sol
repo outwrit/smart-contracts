@@ -5,16 +5,17 @@ import "./interfaces/IRewardsDistributor.sol";
 import "./interfaces/IComputePool.sol";
 import "./interfaces/IComputeRegistry.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-contract RewardsDistributor is AccessControl {
+contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
+    bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
+    bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");
     bytes32 public constant REWARDS_MANAGER_ROLE = keccak256("REWARDS_MANAGER_ROLE");
     bytes32 public constant COMPUTE_POOL_ROLE = keccak256("COMPUTE_POOL_ROLE");
     IComputePool public computePool;
     IComputeRegistry public computeRegistry;
     uint256 public poolId;
-    IERC20 public rewardToken; // Placeholder
-
+    IERC20 public rewardToken; // Token to distribute
     uint256 public rewardRatePerSecond; // Adjustable reward rate
     uint256 public globalRewardIndex; // Cumulative reward per computeUnit
     uint256 public lastUpdateTime; // Last time we updated globalRewardIndex
@@ -42,6 +43,10 @@ contract RewardsDistributor is AccessControl {
         lastUpdateTime = block.timestamp;
         _grantRole(COMPUTE_POOL_ROLE, address(computePool));
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        // for now... we set the rewards manager to be federator by walking up the contract tree
+        address primeContract = computePool.getRoleMember(PRIME_ROLE, 0);
+        address federator = IAccessControlEnumerable(primeContract).getRoleMember(FEDERATOR_ROLE, 0);
+        _grantRole(REWARDS_MANAGER_ROLE, federator);
     }
 
     function _updateGlobalIndex() internal {

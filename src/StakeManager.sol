@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/IStakeManager.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract StakeManager is IStakeManager, AccessControl {
+contract StakeManager is IStakeManager, AccessControlEnumerable {
     struct UnbondTracker {
         uint256 offset;
         Unbond[] unbonds;
