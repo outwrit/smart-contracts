@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
+import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 
 event ProviderRegistered(address provider, uint256 stake);
 
@@ -19,7 +20,7 @@ event ComputeNodeValidated(address provider, address nodekey);
 
 event ComputeNodeInvalidated(address provider, address nodekey);
 
-interface IComputeRegistry {
+interface IComputeRegistry is IAccessControlEnumerable {
     struct ComputeNode {
         address provider;
         address subkey;

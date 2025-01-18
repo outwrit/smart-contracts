@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./IComputeRegistry.sol";
 import "./IRewardsDistributor.sol";
+import "@openzeppelin/contracts/access/extensions/IAccessControlEnumerable.sol";
 
 event ComputePoolCreated(uint256 indexed poolId, uint256 indexed domainId, address indexed creator);
 
@@ -22,7 +23,7 @@ event ComputePoolProviderBlacklisted(uint256 indexed poolId, address indexed pro
 
 event ComputePoolNodeBlacklisted(uint256 indexed poolId, address indexed provider, address nodekey);
 
-interface IComputePool {
+interface IComputePool is IAccessControlEnumerable {
     enum PoolStatus {
         PENDING,
         ACTIVE,
@@ -79,4 +80,5 @@ interface IComputePool {
     function getNodeWork(uint256 poolId, address nodekey) external view returns (WorkInterval[] memory);
     function getProviderActiveNodesInPool(uint256 poolId, address provider) external view returns (uint256);
     function getRewardToken() external view returns (address);
+    function getRewardDistributorForPool(uint256 poolId) external view returns (IRewardsDistributor);
 }

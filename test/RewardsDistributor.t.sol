@@ -16,6 +16,8 @@ contract MockERC20 is ERC20 {
 }
 
 contract MockComputePool {
+    bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
+    bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");
     address public rewardToken;
 
     constructor(address _rewardToken) {
@@ -24,6 +26,18 @@ contract MockComputePool {
 
     function getRewardToken() external view returns (address) {
         return rewardToken;
+    }
+
+    // add getRoleMember mock as it's used in RewardsDistributor constructor
+    function getRoleMember(bytes32 role, uint256 index) external view returns (address) {
+        if (role == PRIME_ROLE) {
+            return address(this);
+        }
+        if (role == FEDERATOR_ROLE) {
+            return address(this);
+        }
+        index == index;
+        return address(0);
     }
 
     // Add any additional mock functions if needed for your tests

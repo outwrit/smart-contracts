@@ -8,11 +8,11 @@ import "./interfaces/IWorkValidation.sol";
 import "./interfaces/IComputePool.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
-contract PrimeNetwork is AccessControl {
+contract PrimeNetwork is AccessControlEnumerable {
     using MessageHashUtils for bytes32;
 
     bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");

@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 import "./interfaces/IComputePool.sol";
 import "./interfaces/IDomainRegistry.sol";
 import "./RewardsDistributor.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
-contract ComputePool is IComputePool, AccessControl {
+contract ComputePool is IComputePool, AccessControlEnumerable {
     using MessageHashUtils for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -328,5 +328,9 @@ contract ComputePool is IComputePool, AccessControl {
 
     function getRewardToken() external view returns (address) {
         return address(AIToken);
+    }
+
+    function getRewardDistributorForPool(uint256 poolId) external view returns (IRewardsDistributor) {
+        return rewardsDistributorMap[poolId];
     }
 }
