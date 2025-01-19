@@ -58,5 +58,14 @@ contract DeployScript is Script {
         console.log("StakeManager:", address(stakeManager));
         console.log("PrimeNetwork:", address(primeNetwork));
         console.log("ComputePool:", address(computePool));
+
+        vm.serializeAddress("contracts", "AIToken", address(aiToken));
+        vm.serializeAddress("contracts", "ComputeRegistry", address(computeRegistry));
+        vm.serializeAddress("contracts", "DomainRegistry", address(domainRegistry));
+        vm.serializeAddress("contracts", "StakeManager", address(stakeManager));
+        vm.serializeAddress("contracts", "PrimeNetwork", address(primeNetwork));
+        string memory finalJson = vm.serializeAddress("contracts", "ComputePool", address(computePool));
+
+        vm.writeJson(finalJson, "./release/deployments.json");
     }
 }
