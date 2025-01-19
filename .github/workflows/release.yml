@@ -1,0 +1,47 @@
+name: Generate Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: 0.3.0
+
+      - name: Generate Release Files
+        run: |
+          chmod +x ./gen_release.sh
+          ./gen_release.sh
+
+      - name: Get version
+        id: version
+        run: |
+          # Get the latest git tag or use v0.1.0 if none exists
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
+          # Increment the patch version
+          NEXT_VERSION=$(echo $LATEST_TAG | awk -F. -v OFS=. '{$NF++;print}')
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          files: |
+            release/*.json
+          generate_release_notes: true
+          draft: true
+          prerelease: false
