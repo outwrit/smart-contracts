@@ -19,7 +19,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: 0.3.0
+          version: stable
 
       - name: Generate Release Files
         run: |
