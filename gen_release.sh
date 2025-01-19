@@ -18,4 +18,4 @@ sleep 1
 
 echo "Finished..."
 
-kill $pid
+kill -SIGINT $pid
