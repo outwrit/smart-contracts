@@ -55,7 +55,11 @@ contract PrimeNetwork is AccessControlEnumerable {
         revokeRole(VALIDATOR_ROLE, msg.sender);
     }
 
-    function whitelistProvider(address provider) external onlyRole(VALIDATOR_ROLE) {
+    function whitelistProvider(address provider) external {
+        require(
+            hasRole(VALIDATOR_ROLE, msg.sender) || hasRole(FEDERATOR_ROLE, msg.sender),
+            "Must have VALIDATOR_ROLE or FEDERATOR_ROLE"
+        );
         computeRegistry.setWhitelistStatus(provider, true);
         emit ProviderWhitelisted(provider);
     }
