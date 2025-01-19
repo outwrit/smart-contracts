@@ -2,9 +2,8 @@ name: Generate Release
 
 on:
   push:
-    # branches:
-    #   - main
-  workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   release:
@@ -43,5 +42,5 @@ jobs:
           files: |
             release/*.json
           generate_release_notes: true
-          draft: true
+          draft: false
           prerelease: false
