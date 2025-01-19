@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./interfaces/IComputePool.sol";
 import "./interfaces/IDomainRegistry.sol";
 import "./RewardsDistributor.sol";
+import "./RewardsDistributorFactory.sol";
 import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -20,6 +21,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     uint256 public poolIdCounter;
     IComputeRegistry public computeRegistry;
     IDomainRegistry public domainRegistry;
+    RewardsDistributorFactory public rewardsDistributorFactory;
     IERC20 public AIToken;
 
     mapping(uint256 => mapping(address => WorkInterval[])) public nodeWork;
@@ -37,6 +39,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         address _primeAdmin,
         IDomainRegistry _domainRegistry,
         IComputeRegistry _computeRegistry,
+        RewardsDistributorFactory _rewardsDistributorFactory,
         IERC20 _AIToken
     ) {
         _grantRole(DEFAULT_ADMIN_ROLE, _primeAdmin);
@@ -45,6 +48,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         AIToken = _AIToken;
         computeRegistry = _computeRegistry;
         domainRegistry = _domainRegistry;
+        rewardsDistributorFactory = _rewardsDistributorFactory;
     }
 
     function _verifyPoolInvite(
@@ -96,7 +100,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         });
 
         rewardsDistributorMap[poolIdCounter] =
-            new RewardsDistributor(IComputePool(address(this)), computeRegistry, poolIdCounter);
+            rewardsDistributorFactory.createRewardsDistributor(computeRegistry, poolIdCounter);
 
         poolIdCounter++;
 

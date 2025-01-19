@@ -8,6 +8,7 @@ import "../src/ComputeRegistry.sol";
 import "../src/DomainRegistry.sol";
 import "../src/PrimeNetwork.sol";
 import "../src/StakeManager.sol";
+import {RewardsDistributorFactory} from "../src/RewardsDistributorFactory.sol";
 
 contract DeployScript is Script {
     function run() external {
@@ -34,8 +35,13 @@ contract DeployScript is Script {
         // Deploy StakeManager with deployer as admin
         StakeManager stakeManager = new StakeManager(address(primeNetwork), 7 days, aiToken);
 
+        // Deploy RewardsDistributorFactory
+        RewardsDistributorFactory rewardsDistributorFactory = new RewardsDistributorFactory();
         // Deploy ComputePool with deployer as admin
-        ComputePool computePool = new ComputePool(address(primeNetwork), domainRegistry, computeRegistry, aiToken);
+        ComputePool computePool =
+            new ComputePool(address(primeNetwork), domainRegistry, computeRegistry, rewardsDistributorFactory, aiToken);
+        // Set ComputePool in RewardsDistributorFactory
+        rewardsDistributorFactory.setComputePool(computePool);
 
         // Set up module addresses in PrimeNetwork
         primeNetwork.setModuleAddresses(

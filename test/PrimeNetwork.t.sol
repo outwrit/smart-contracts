@@ -11,6 +11,7 @@ import {DomainRegistry} from "../src/DomainRegistry.sol";
 import {IStakeManager} from "../src/interfaces/IStakeManager.sol";
 import {IDomainRegistry} from "../src/interfaces/IDomainRegistry.sol";
 import {IWorkValidation} from "../src/interfaces/IWorkValidation.sol";
+import {RewardsDistributorFactory} from "../src/RewardsDistributorFactory.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
@@ -42,6 +43,7 @@ contract PrimeNetworkTest is Test {
     ComputePool computePool;
     StakeManager stakeManager;
     DomainRegistry domainRegistry;
+    RewardsDistributorFactory rewardsDistributorFactory;
 
     uint256 unbondingPeriod = 60 * 60 * 24 * 7; // 1 week
 
@@ -54,7 +56,10 @@ contract PrimeNetworkTest is Test {
         computeRegistry = new ComputeRegistry(address(primeNetwork));
         stakeManager = new StakeManager(address(primeNetwork), unbondingPeriod, AI);
         domainRegistry = new DomainRegistry(address(primeNetwork));
-        computePool = new ComputePool(address(primeNetwork), domainRegistry, computeRegistry, AI);
+        rewardsDistributorFactory = new RewardsDistributorFactory();
+        computePool =
+            new ComputePool(address(primeNetwork), domainRegistry, computeRegistry, rewardsDistributorFactory, AI);
+        rewardsDistributorFactory.setComputePool(computePool);
 
         primeNetwork.setModuleAddresses(
             address(computeRegistry), address(domainRegistry), address(stakeManager), address(computePool)
