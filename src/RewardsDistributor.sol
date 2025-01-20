@@ -19,17 +19,24 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
     uint256 public rewardRatePerSecond; // Adjustable reward rate
     uint256 public globalRewardIndex; // Cumulative reward per computeUnit
     uint256 public lastUpdateTime; // Last time we updated globalRewardIndex
-    uint256 public totalActiveComputeUnits;
     uint256 public endTime;
 
+    // for consistent tracking of node rewards through interface, otherwise
+    // this data would require calls to several different contracts the
+    // states of which might change in between calls
     struct NodeData {
         uint256 computeUnits;
-        uint256 nodeRewardIndex; // Snapshot of globalRewardIndex at the time of last update
-        uint256 unclaimedRewards; // Accumulated but not claimed
+        uint256 nodeRewardIndex;
+        uint256 unclaimedRewards;
         bool isActive;
     }
 
-    mapping(address => NodeData) public nodeInfo;
+    struct NodeDataInternal {
+        uint256 nodeRewardIndex; // Snapshot of globalRewardIndex at the time of last update
+        uint256 unclaimedRewards; // Accumulated but not claimed
+    }
+
+    mapping(address => NodeDataInternal) private nodeInfoInternal;
 
     constructor(IComputePool _computePool, IComputeRegistry _computeRegistry, uint256 _poolId) {
         computePool = _computePool;
@@ -38,7 +45,6 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
         rewardRatePerSecond = 0;
         globalRewardIndex = 0;
         lastUpdateTime = block.timestamp;
-        totalActiveComputeUnits = 0;
         rewardToken = IERC20(computePool.getRewardToken());
         lastUpdateTime = block.timestamp;
         _grantRole(COMPUTE_POOL_ROLE, address(computePool));
@@ -49,6 +55,16 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
         _grantRole(REWARDS_MANAGER_ROLE, federator);
     }
 
+    function nodeInfo(address node) external view returns (uint256, uint256, uint256, bool) {
+        NodeData memory nd = NodeData({computeUnits: 0, nodeRewardIndex: 0, unclaimedRewards: 0, isActive: false});
+        NodeDataInternal storage ndi = nodeInfoInternal[node];
+        nd.nodeRewardIndex = ndi.nodeRewardIndex;
+        nd.unclaimedRewards = ndi.unclaimedRewards;
+        nd.isActive = computePool.isNodeInPool(poolId, node);
+        nd.computeUnits = computeRegistry.getNodeComputeUnits(node);
+        return (nd.computeUnits, nd.nodeRewardIndex, nd.unclaimedRewards, nd.isActive);
+    }
+
     function _updateGlobalIndex() internal {
         if (endTime > 0) {
             return; // no update if ended
@@ -57,6 +73,8 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
         if (currentTime == lastUpdateTime) {
             return; // no update if no time passed
         }
+
+        uint256 totalActiveComputeUnits = computePool.getComputePoolTotalCompute(poolId);
 
         uint256 timeDelta = currentTime - lastUpdateTime;
         // e.g. timeDelta * rewardRatePerSecond
@@ -77,38 +95,29 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
     }
 
     // Node joining
-    function joinPool(address node, uint256 nodeComputeUnits) external onlyRole(COMPUTE_POOL_ROLE) {
+    function joinPool(address node) external onlyRole(COMPUTE_POOL_ROLE) {
         if (endTime > 0) {
             return; // no joining if ended
         }
         // Possibly require validations, checks, etc.
         _updateGlobalIndex();
 
-        NodeData storage nd = nodeInfo[node];
-        require(!nd.isActive, "Node already active");
+        NodeDataInternal storage nd = nodeInfoInternal[node];
 
         // Synchronize node index with the current global
         nd.nodeRewardIndex = globalRewardIndex;
-        nd.computeUnits = nodeComputeUnits;
-        nd.isActive = true;
-        totalActiveComputeUnits += nodeComputeUnits;
     }
 
     // Node leaving
     function leavePool(address node) external onlyRole(COMPUTE_POOL_ROLE) {
         _updateGlobalIndex();
 
-        NodeData storage nd = nodeInfo[node];
-        require(nd.isActive, "Node not active");
+        NodeDataInternal storage nd = nodeInfoInternal[node];
 
         // Calculate newly accrued since last time
         uint256 delta = globalRewardIndex - nd.nodeRewardIndex;
-        nd.unclaimedRewards += (delta * nd.computeUnits);
+        nd.unclaimedRewards += (delta * computeRegistry.getNodeComputeUnits(node));
 
-        // Remove from totals
-        totalActiveComputeUnits -= nd.computeUnits;
-        nd.isActive = false;
-        nd.computeUnits = 0;
         nd.nodeRewardIndex = 0; // optional reset
     }
 
@@ -117,12 +126,12 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
         _updateGlobalIndex();
         require(msg.sender == computeRegistry.getNodeProvider(node), "Unauthorized");
 
-        NodeData storage nd = nodeInfo[node];
+        NodeDataInternal storage nd = nodeInfoInternal[node];
 
         // If still active, sync the newest portion
-        if (nd.isActive) {
+        if (computePool.isNodeInPool(poolId, node)) {
             uint256 delta = globalRewardIndex - nd.nodeRewardIndex;
-            nd.unclaimedRewards += (delta * nd.computeUnits);
+            nd.unclaimedRewards += (delta * computeRegistry.getNodeComputeUnits(node));
             nd.nodeRewardIndex = globalRewardIndex;
         }
 
@@ -134,11 +143,12 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
     }
 
     function calculateRewards(address node) external view returns (uint256) {
-        NodeData memory nd = nodeInfo[node];
+        NodeDataInternal memory nd = nodeInfoInternal[node];
         uint256 timeDelta;
+        uint256 totalActiveComputeUnits = computePool.getComputePoolTotalCompute(poolId);
 
         // If the node has never joined, or there are no active computeUnits in total, no extra rewards to calculate.
-        if (!nd.isActive && nd.unclaimedRewards == 0) {
+        if (!computePool.isNodeInPool(poolId, node) && nd.unclaimedRewards == 0) {
             return 0;
         }
 
@@ -162,9 +172,9 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
         uint256 pending = nd.unclaimedRewards;
 
         // 4. If node is active, add newly accrued portion
-        if (nd.isActive) {
+        if (computePool.isNodeInPool(poolId, node)) {
             uint256 indexDelta = hypotheticalGlobalIndex - nd.nodeRewardIndex;
-            uint256 newlyAccrued = indexDelta * nd.computeUnits;
+            uint256 newlyAccrued = indexDelta * computeRegistry.getNodeComputeUnits(node);
             pending += newlyAccrued;
         }
 

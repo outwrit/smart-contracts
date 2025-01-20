@@ -188,7 +188,10 @@ contract PrimeNetworkTest is Test {
             signatures[i] = signature;
         }
         vm.startPrank(provider);
+        vm.startSnapshotGas("add nodes to pool using multi join");
         computePool.joinComputePool(poolId, provider, nodes, signatures);
+        uint256 gasUsed = vm.stopSnapshotGas();
+        console.log("add nodes to pool using multi join", gasUsed);
     }
 
     function nodeLeave(uint256 poolId, address provider, address node) public {
@@ -445,12 +448,13 @@ contract PrimeNetworkTest is Test {
                 ng[i].node_keys[j] = nk;
                 addNode(pa, na, nk);
                 validateNode(pa, na);
-                nodeJoin(domain, pool, pa, na);
+                // nodeJoin(domain, pool, pa, na);
                 // confirm node registration
                 ComputeRegistry.ComputeNode memory nx = computeRegistry.getNode(pa, na);
                 assertEq(nx.provider, pa);
                 assertEq(nx.subkey, na);
             }
+            nodeJoinMultiple(domain, pool, ng[i].provider, ng[i].nodes);
         }
 
         vm.startSnapshotGas("blacklist provider that has 20 active nodes in 200 node pool");

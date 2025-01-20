@@ -4,16 +4,19 @@ pragma solidity ^0.8.0;
 import "./interfaces/IComputeRegistry.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
     bytes32 public constant COMPUTE_POOL_ROLE = keccak256("COMPUTE_POOL_ROLE");
 
     using EnumerableMap for EnumerableMap.AddressToUintMap;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     mapping(address => ComputeProvider) public providers;
     mapping(address => address) public nodeProviderMap;
     EnumerableMap.AddressToUintMap private nodeSubkeyToIndex;
+    EnumerableSet.AddressSet private providerSet;
 
     constructor(address primeAdmin) {
         _grantRole(DEFAULT_ADMIN_ROLE, primeAdmin);
@@ -40,6 +43,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
             cp.isWhitelisted = false;
             cp.activeNodes = 0;
             cp.nodes = new ComputeNode[](0);
+            providerSet.add(provider);
             return true;
         }
         return false;
@@ -50,6 +54,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
             return false;
         } else {
             delete providers[provider];
+            providerSet.remove(provider);
             return true;
         }
     }
@@ -169,7 +174,44 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         return _fetchNodeOrZero(provider, subkey);
     }
 
+    function getNode(address subkey) external view returns (ComputeNode memory) {
+        address provider = nodeProviderMap[subkey];
+        return _fetchNodeOrZero(provider, subkey);
+    }
+
+    function getProviderValidatedNodes(address provider, bool filterForActive)
+        external
+        view
+        returns (address[] memory)
+    {
+        ComputeProvider memory cp = providers[provider];
+        address[] memory result = new address[](cp.nodes.length);
+        for (uint256 i = 0; i < cp.nodes.length; i++) {
+            if (cp.nodes[i].isValidated) {
+                if (filterForActive && !cp.nodes[i].isActive) {
+                    continue;
+                }
+                result[i] = cp.nodes[i].subkey;
+            }
+        }
+        return result;
+    }
+
+    function getNodeComputeUnits(address subkey) external view returns (uint256) {
+        address provider = nodeProviderMap[subkey];
+        return _fetchNodeOrZero(provider, subkey).computeUnits;
+    }
+
     function getNodeProvider(address subkey) external view returns (address) {
         return nodeProviderMap[subkey];
+    }
+
+    function getNodeContractData(address subkey) external view returns (address, uint32, bool, bool) {
+        ComputeNode memory cn = _fetchNodeOrZero(nodeProviderMap[subkey], subkey);
+        return (cn.provider, cn.computeUnits, cn.isActive, cn.isValidated);
+    }
+
+    function getProviderAddressList() external view returns (address[] memory) {
+        return providerSet.values();
     }
 }

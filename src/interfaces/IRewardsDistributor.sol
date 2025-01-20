@@ -10,6 +10,6 @@ interface IRewardsDistributor {
     function claimRewards(address node) external;
     function setRewardRate(uint256 newRate) external;
     function endRewards() external;
-    function joinPool(address node, uint256 computeUnits) external;
+    function joinPool(address node) external;
     function leavePool(address node) external;
 }
