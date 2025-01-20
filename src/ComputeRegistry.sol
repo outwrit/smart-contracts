@@ -220,8 +220,15 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     }
 
     function getNodeContractData(address subkey) external view returns (address, uint32, bool, bool) {
-        ComputeNode memory cn = _fetchNodeOrZero(nodeProviderMap[subkey], subkey);
-        return (cn.provider, cn.computeUnits, cn.isActive, cn.isValidated);
+        // optimize by not pulling out entire node struct
+        address provider = nodeProviderMap[subkey];
+        if (provider != address(0)) {
+            ComputeNode storage node = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
+            if (node.subkey == subkey) {
+                return (node.provider, node.computeUnits, node.isActive, node.isValidated);
+            }
+        }
+        return (address(0), 0, false, false);
     }
 
     function getProviderAddressList() external view returns (address[] memory) {
