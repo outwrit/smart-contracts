@@ -51,6 +51,24 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         rewardsDistributorFactory = _rewardsDistributorFactory;
     }
 
+    function _copyAddresses(address[] memory source) internal pure returns (address[] memory target) {
+        uint256 len = source.length;
+        target = new address[](len);
+        assembly {
+            // Each element is 32 bytes in memory
+            let byteLen := mul(len, 32)
+            let srcPtr := add(source, 0x20)
+            let destPtr := add(target, 0x20)
+            let endPtr := add(srcPtr, byteLen)
+
+            for {} lt(srcPtr, endPtr) {} {
+                mstore(destPtr, mload(srcPtr))
+                srcPtr := add(srcPtr, 32)
+                destPtr := add(destPtr, 32)
+            }
+        }
+    }
+
     function _verifyPoolInvite(
         uint256 domainId,
         uint256 poolId,
@@ -263,9 +281,10 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         // Remove from active set
         _poolProviders[poolId].remove(provider);
 
+        // use memcpy to copy array so we're not iterating over a changing set
+        address[] memory nodes = _copyAddresses(_poolNodes[poolId].values());
         // Remove all nodes for that provider
-        address[] memory nodes = _poolNodes[poolId].values();
-        for (uint256 i = 0; i < nodes.length;) {
+        for (uint256 i = 0; i < nodes.length; ++i) {
             IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodes[i]);
             if (node.provider == provider) {
                 _poolNodes[poolId].remove(nodes[i]);
@@ -275,9 +294,6 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
                 pools[poolId].totalCompute -= node.computeUnits;
                 providerActiveNodes[poolId][provider]--;
                 computeRegistry.updateNodeStatus(provider, nodes[i], false);
-            }
-            unchecked {
-                ++i;
             }
         }
 
