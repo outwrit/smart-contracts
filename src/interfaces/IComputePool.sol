@@ -46,11 +46,6 @@ interface IComputePool is IAccessControlEnumerable {
         PoolStatus status;
     }
 
-    struct WorkInterval {
-        uint256 joinTime;
-        uint256 leaveTime;
-    }
-
     // Note: computeLimit == 0 implies no limit
     function createComputePool(
         uint256 domainId,
@@ -77,8 +72,12 @@ interface IComputePool is IAccessControlEnumerable {
     function getComputePool(uint256 poolId) external view returns (PoolInfo memory);
     function getComputePoolProviders(uint256 poolId) external view returns (address[] memory);
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory);
-    function getNodeWork(uint256 poolId, address nodekey) external view returns (WorkInterval[] memory);
+    function getComputePoolBlacklistedProviders(uint256 poolId) external view returns (address[] memory);
+    function getComputePoolBlacklistedNodes(uint256 poolId) external view returns (address[] memory);
+    function getComputePoolTotalCompute(uint256 poolId) external view returns (uint256);
     function getProviderActiveNodesInPool(uint256 poolId, address provider) external view returns (uint256);
     function getRewardToken() external view returns (address);
     function getRewardDistributorForPool(uint256 poolId) external view returns (IRewardsDistributor);
+    function isProviderBlacklistedFromPool(uint256 poolId, address provider) external returns (bool);
+    function isNodeBlacklistedFromPool(uint256 poolId, address nodekey) external returns (bool);
 }

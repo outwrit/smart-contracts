@@ -15,6 +15,15 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     using MessageHashUtils for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    struct PoolState {
+        mapping(address => uint256) providerActiveNodes;
+        EnumerableSet.AddressSet poolProviders;
+        EnumerableSet.AddressSet poolNodes;
+        EnumerableSet.AddressSet blacklistedProviders;
+        EnumerableSet.AddressSet blacklistedNodes;
+        IRewardsDistributor rewardsDistributor;
+    }
+
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
 
     mapping(uint256 => PoolInfo) public pools;
@@ -24,16 +33,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     RewardsDistributorFactory public rewardsDistributorFactory;
     IERC20 public AIToken;
 
-    mapping(uint256 => mapping(address => WorkInterval[])) public nodeWork;
-    mapping(uint256 => mapping(address => uint256)) public providerActiveNodes;
-
-    mapping(uint256 => EnumerableSet.AddressSet) private _poolProviders;
-    mapping(uint256 => EnumerableSet.AddressSet) private _poolNodes;
-
-    mapping(uint256 => EnumerableSet.AddressSet) private _blacklistedProviders;
-    mapping(uint256 => EnumerableSet.AddressSet) private _blacklistedNodes;
-
-    mapping(uint256 => IRewardsDistributor) public rewardsDistributorMap;
+    mapping(uint256 => PoolState) private poolStates;
 
     constructor(
         address _primeAdmin,
@@ -80,18 +80,6 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         return SignatureChecker.isValidSignatureNow(computeManagerKey, messageHash, signature);
     }
 
-    function _updateLeaveTime(uint256 poolId, address nodekey) private {
-        uint256 leaveTime = block.timestamp;
-        if (pools[poolId].status == PoolStatus.COMPLETED) {
-            leaveTime = pools[poolId].endTime;
-        }
-        nodeWork[poolId][nodekey][nodeWork[poolId][nodekey].length - 1].leaveTime = leaveTime;
-    }
-
-    function _addJoinTime(uint256 poolId, address nodekey) private {
-        nodeWork[poolId][nodekey].push(WorkInterval({joinTime: block.timestamp, leaveTime: 0}));
-    }
-
     function createComputePool(
         uint256 domainId,
         address computeManagerKey,
@@ -117,7 +105,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
             status: PoolStatus.PENDING
         });
 
-        rewardsDistributorMap[poolIdCounter] =
+        poolStates[poolIdCounter].rewardsDistributor =
             rewardsDistributorFactory.createRewardsDistributor(computeRegistry, poolIdCounter);
 
         poolIdCounter++;
@@ -146,7 +134,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         pools[poolId].endTime = block.timestamp;
         pools[poolId].status = PoolStatus.COMPLETED;
 
-        rewardsDistributorMap[poolId].endRewards();
+        poolStates[poolId].rewardsDistributor.endRewards();
 
         emit ComputePoolEnded(poolId);
     }
@@ -157,15 +145,15 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         require(msg.sender == provider || msg.sender == address(this), "ComputePool: only provider can join pool");
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
         require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: pool is not active");
-        require(!_blacklistedProviders[poolId].contains(provider), "ComputePool: provider is blacklisted");
+        require(!poolStates[poolId].blacklistedProviders.contains(provider), "ComputePool: provider is blacklisted");
         require(computeRegistry.getWhitelistStatus(provider), "ComputePool: provider is not whitelisted");
 
         for (uint256 i = 0; i < nodekey.length; i++) {
-            require(!_blacklistedNodes[poolId].contains(nodekey[i]), "ComputePool: node is blacklisted");
+            require(!poolStates[poolId].blacklistedNodes.contains(nodekey[i]), "ComputePool: node is blacklisted");
         }
 
-        if (!_poolProviders[poolId].contains(provider)) {
-            _poolProviders[poolId].add(provider);
+        if (!poolStates[poolId].poolProviders.contains(provider)) {
+            poolStates[poolId].poolProviders.add(provider);
         }
         for (uint256 i = 0; i < nodekey.length; i++) {
             IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodekey[i]);
@@ -182,11 +170,10 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
             if (pools[poolId].computeLimit > 0) {
                 require(addedCompute < pools[poolId].computeLimit, "ComputePool: pool is at capacity");
             }
-            _poolNodes[poolId].add(nodekey[i]);
-            _addJoinTime(poolId, nodekey[i]);
-            rewardsDistributorMap[poolId].joinPool(nodekey[i], node.computeUnits);
+            poolStates[poolId].poolNodes.add(nodekey[i]);
+            poolStates[poolId].rewardsDistributor.joinPool(nodekey[i], node.computeUnits);
             pools[poolId].totalCompute += node.computeUnits;
-            providerActiveNodes[poolId][provider]++;
+            poolStates[poolId].providerActiveNodes[provider]++;
             computeRegistry.updateNodeStatus(provider, nodekey[i], true);
         }
         emit ComputePoolJoined(poolId, provider, nodekey);
@@ -198,16 +185,15 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
 
         if (nodekey == address(0)) {
             // Remove all nodes belonging to that provider
-            address[] memory nodes = _poolNodes[poolId].values();
+            address[] memory nodes = poolStates[poolId].poolNodes.values();
             for (uint256 i = 0; i < nodes.length; ++i) {
                 IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodes[i]);
                 if (node.provider == provider) {
-                    _poolNodes[poolId].remove(nodes[i]);
+                    poolStates[poolId].poolNodes.remove(nodes[i]);
                     // Mark last interval's leaveTime
-                    _updateLeaveTime(poolId, nodes[i]);
-                    rewardsDistributorMap[poolId].leavePool(nodes[i]);
+                    poolStates[poolId].rewardsDistributor.leavePool(nodes[i]);
                     pools[poolId].totalCompute -= node.computeUnits;
-                    providerActiveNodes[poolId][provider]--;
+                    poolStates[poolId].providerActiveNodes[provider]--;
                     computeRegistry.updateNodeStatus(provider, nodes[i], false);
                     emit ComputePoolLeft(poolId, provider, nodes[i]);
                 }
@@ -216,18 +202,17 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
             // Just remove the single node
             IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodekey);
             if (node.provider == provider) {
-                if (_poolNodes[poolId].remove(nodekey)) {
-                    _updateLeaveTime(poolId, nodekey);
-                    rewardsDistributorMap[poolId].leavePool(nodekey);
+                if (poolStates[poolId].poolNodes.remove(nodekey)) {
+                    poolStates[poolId].rewardsDistributor.leavePool(nodekey);
                     pools[poolId].totalCompute -= node.computeUnits;
-                    providerActiveNodes[poolId][provider]--;
+                    poolStates[poolId].providerActiveNodes[provider]--;
                     computeRegistry.updateNodeStatus(provider, nodekey, false);
                     emit ComputePoolLeft(poolId, provider, nodekey);
                 }
             }
         }
-        if (providerActiveNodes[poolId][provider] == 0) {
-            _poolProviders[poolId].remove(provider);
+        if (poolStates[poolId].providerActiveNodes[provider] == 0) {
+            poolStates[poolId].poolProviders.remove(provider);
         }
     }
 
@@ -279,26 +264,25 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist provider");
 
         // Remove from active set
-        _poolProviders[poolId].remove(provider);
+        poolStates[poolId].poolProviders.remove(provider);
 
         // use memcpy to copy array so we're not iterating over a changing set
-        address[] memory nodes = _copyAddresses(_poolNodes[poolId].values());
+        address[] memory nodes = _copyAddresses(poolStates[poolId].poolNodes.values());
         // Remove all nodes for that provider
         for (uint256 i = 0; i < nodes.length; ++i) {
             IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodes[i]);
             if (node.provider == provider) {
-                _poolNodes[poolId].remove(nodes[i]);
+                poolStates[poolId].poolNodes.remove(nodes[i]);
                 // Mark last interval's leaveTime
-                _updateLeaveTime(poolId, nodes[i]);
-                rewardsDistributorMap[poolId].leavePool(nodes[i]);
+                poolStates[poolId].rewardsDistributor.leavePool(nodes[i]);
                 pools[poolId].totalCompute -= node.computeUnits;
-                providerActiveNodes[poolId][provider]--;
+                poolStates[poolId].providerActiveNodes[provider]--;
                 computeRegistry.updateNodeStatus(provider, nodes[i], false);
             }
         }
 
         // Add to blacklist set
-        _blacklistedProviders[poolId].add(provider);
+        poolStates[poolId].blacklistedProviders.add(provider);
         emit ComputePoolProviderBlacklisted(poolId, provider);
     }
 
@@ -306,20 +290,19 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
         require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist node");
 
-        if (_poolNodes[poolId].contains(nodekey)) {
+        if (poolStates[poolId].poolNodes.contains(nodekey)) {
             IComputeRegistry.ComputeNode memory node = computeRegistry.getNode(provider, nodekey);
             require(node.provider == provider, "ComputePool: node does not exist");
-            _updateLeaveTime(poolId, nodekey);
-            rewardsDistributorMap[poolId].leavePool(nodekey);
-            _poolNodes[poolId].remove(nodekey);
+            poolStates[poolId].rewardsDistributor.leavePool(nodekey);
+            poolStates[poolId].poolNodes.remove(nodekey);
             pools[poolId].totalCompute -= node.computeUnits;
-            providerActiveNodes[poolId][node.provider]--;
+            poolStates[poolId].providerActiveNodes[node.provider]--;
             computeRegistry.updateNodeStatus(node.provider, nodekey, false);
-            if (providerActiveNodes[poolId][node.provider] == 0) {
-                _poolProviders[poolId].remove(node.provider);
+            if (poolStates[poolId].providerActiveNodes[node.provider] == 0) {
+                poolStates[poolId].poolProviders.remove(node.provider);
             }
         }
-        _blacklistedNodes[poolId].add(nodekey);
+        poolStates[poolId].blacklistedNodes.add(nodekey);
         emit ComputePoolNodeBlacklisted(poolId, provider, nodekey);
     }
 
@@ -331,19 +314,15 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     }
 
     function getComputePoolProviders(uint256 poolId) external view returns (address[] memory) {
-        return _poolProviders[poolId].values();
+        return poolStates[poolId].poolProviders.values();
     }
 
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory) {
-        return _poolNodes[poolId].values();
-    }
-
-    function getNodeWork(uint256 poolId, address nodekey) external view returns (WorkInterval[] memory) {
-        return nodeWork[poolId][nodekey];
+        return poolStates[poolId].poolNodes.values();
     }
 
     function getProviderActiveNodesInPool(uint256 poolId, address provider) external view returns (uint256) {
-        return providerActiveNodes[poolId][provider];
+        return poolStates[poolId].providerActiveNodes[provider];
     }
 
     function getRewardToken() external view returns (address) {
@@ -351,6 +330,26 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     }
 
     function getRewardDistributorForPool(uint256 poolId) external view returns (IRewardsDistributor) {
-        return rewardsDistributorMap[poolId];
+        return poolStates[poolId].rewardsDistributor;
+    }
+
+    function getComputePoolTotalCompute(uint256 poolId) external view returns (uint256) {
+        return pools[poolId].totalCompute;
+    }
+
+    function getComputePoolBlacklistedProviders(uint256 poolId) external view returns (address[] memory) {
+        return poolStates[poolId].blacklistedProviders.values();
+    }
+
+    function getComputePoolBlacklistedNodes(uint256 poolId) external view returns (address[] memory) {
+        return poolStates[poolId].blacklistedNodes.values();
+    }
+
+    function isProviderBlacklistedFromPool(uint256 poolId, address provider) external view returns (bool) {
+        return poolStates[poolId].blacklistedProviders.contains(provider);
+    }
+
+    function isNodeBlacklistedFromPool(uint256 poolId, address nodekey) external view returns (bool) {
+        return poolStates[poolId].blacklistedNodes.contains(nodekey);
     }
 }
