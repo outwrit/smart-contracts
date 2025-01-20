@@ -17,6 +17,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     mapping(address => address) public nodeProviderMap;
     EnumerableMap.AddressToUintMap private nodeSubkeyToIndex;
     EnumerableSet.AddressSet private providerSet;
+    mapping(address => EnumerableSet.AddressSet) private providerValidatedNodes;
 
     constructor(address primeAdmin) {
         _grantRole(DEFAULT_ADMIN_ROLE, primeAdmin);
@@ -136,6 +137,15 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
 
     function setNodeValidationStatus(address provider, address subkey, bool status) external onlyRole(PRIME_ROLE) {
         require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        bool current_status = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].isValidated;
+        if (current_status == status) {
+            return;
+        }
+        if (status) {
+            providerValidatedNodes[provider].add(subkey);
+        } else {
+            providerValidatedNodes[provider].remove(subkey);
+        }
         providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].isValidated = status;
     }
 
@@ -184,17 +194,20 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         view
         returns (address[] memory)
     {
-        ComputeProvider memory cp = providers[provider];
-        address[] memory result = new address[](cp.nodes.length);
-        for (uint256 i = 0; i < cp.nodes.length; i++) {
-            if (cp.nodes[i].isValidated) {
-                if (filterForActive && !cp.nodes[i].isActive) {
-                    continue;
+        address[] memory validatedNodes = providerValidatedNodes[provider].values();
+        if (!filterForActive) {
+            return validatedNodes;
+        } else {
+            address[] memory result = new address[](providers[provider].activeNodes);
+            uint32 activeCount = 0;
+            for (uint256 i = 0; i < validatedNodes.length; i++) {
+                if (providers[provider].nodes[nodeSubkeyToIndex.get(validatedNodes[i])].isActive) {
+                    result[activeCount] = validatedNodes[i];
+                    activeCount++;
                 }
-                result[i] = cp.nodes[i].subkey;
             }
+            return result;
         }
-        return result;
     }
 
     function getNodeComputeUnits(address subkey) external view returns (uint256) {

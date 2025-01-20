@@ -187,11 +187,13 @@ contract PrimeNetworkTest is Test {
             bytes memory signature = abi.encodePacked(r, s, v);
             signatures[i] = signature;
         }
+        string memory msgString =
+            string(abi.encodePacked("add (", vm.toString(nodes.length), ") nodes to pool using multi join - gas:"));
         vm.startPrank(provider);
-        vm.startSnapshotGas("add nodes to pool using multi join");
+        vm.startSnapshotGas(msgString);
         computePool.joinComputePool(poolId, provider, nodes, signatures);
         uint256 gasUsed = vm.stopSnapshotGas();
-        console.log("add nodes to pool using multi join", gasUsed);
+        console.log(msgString, gasUsed);
     }
 
     function nodeLeave(uint256 poolId, address provider, address node) public {
@@ -437,7 +439,7 @@ contract PrimeNetworkTest is Test {
         NodeGroup[] memory ng = new NodeGroup[](num_providers);
 
         for (uint256 i = 0; i < num_providers; i++) {
-            string memory provider = string(abi.encodePacked(provider_prefix, vm.toString(i)));
+            string memory provider = string(abi.encodePacked(provider_prefix, vm.toString(i + 1)));
             (address pa, uint256 pk) = makeAddrAndKey(provider);
             fundProvider(pa);
             addProvider(pa);
@@ -447,7 +449,7 @@ contract PrimeNetworkTest is Test {
             ng[i].nodes = new address[](num_nodes_per_provider);
             ng[i].node_keys = new uint256[](num_nodes_per_provider);
             for (uint256 j = 0; j < num_nodes_per_provider; j++) {
-                string memory node = string(abi.encodePacked(node_prefix, vm.toString(i), "_", vm.toString(j)));
+                string memory node = string(abi.encodePacked(node_prefix, vm.toString(i + 1), "_", vm.toString(j + 1)));
                 (address na, uint256 nk) = makeAddrAndKey(node);
                 ng[i].nodes[j] = na;
                 ng[i].node_keys[j] = nk;
