@@ -45,6 +45,13 @@ contract PrimeNetworkTest is Test {
     DomainRegistry domainRegistry;
     RewardsDistributorFactory rewardsDistributorFactory;
 
+    struct NodeGroup {
+        address provider;
+        uint256 provder_key;
+        address[] nodes;
+        uint256[] node_keys;
+    }
+
     uint256 unbondingPeriod = 60 * 60 * 24 * 7; // 1 week
 
     function setUp() public {
@@ -84,6 +91,11 @@ contract PrimeNetworkTest is Test {
         AI.mint(provider_good2, 1000);
         AI.mint(provider_good3, 1000);
         AI.mint(provider_bad1, 1000);
+    }
+
+    function fundProvider(address provider) public {
+        vm.startPrank(federator);
+        AI.mint(provider, 1000);
     }
 
     function addProvider(address provider) public {
@@ -402,6 +414,49 @@ contract PrimeNetworkTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(provider_permit_sk, digest);
         bytes memory signature = abi.encode(r, s, v);
         primeNetwork.registerProviderWithPermit(value, deadline, signature);
+    }
+
+    function test_blacklistGasCosts() public {
+        string memory node_prefix = "node_gastest";
+        string memory provider_prefix = "provider_gastest";
+
+        uint256 num_providers = 10;
+        uint256 num_nodes_per_provider = 20;
+        uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
+        uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
+        startPool(pool);
+
+        NodeGroup[] memory ng = new NodeGroup[](num_providers);
+
+        for (uint256 i = 0; i < num_providers; i++) {
+            string memory provider = string(abi.encodePacked(provider_prefix, vm.toString(i)));
+            (address pa, uint256 pk) = makeAddrAndKey(provider);
+            fundProvider(pa);
+            addProvider(pa);
+            whitelistProvider(pa);
+            ng[i].provider = pa;
+            ng[i].provder_key = pk;
+            ng[i].nodes = new address[](num_nodes_per_provider);
+            ng[i].node_keys = new uint256[](num_nodes_per_provider);
+            for (uint256 j = 0; j < num_nodes_per_provider; j++) {
+                string memory node = string(abi.encodePacked(node_prefix, vm.toString(i), "_", vm.toString(j)));
+                (address na, uint256 nk) = makeAddrAndKey(node);
+                ng[i].nodes[j] = na;
+                ng[i].node_keys[j] = nk;
+                addNode(pa, na, nk);
+                validateNode(pa, na);
+                nodeJoin(domain, pool, pa, na);
+                // confirm node registration
+                ComputeRegistry.ComputeNode memory nx = computeRegistry.getNode(pa, na);
+                assertEq(nx.provider, pa);
+                assertEq(nx.subkey, na);
+            }
+        }
+
+        vm.startSnapshotGas("blacklist provider that has 20 active nodes in 200 node pool");
+        blacklistProviderFromPool(pool, ng[3].provider);
+        uint256 gasUsed = vm.stopSnapshotGas();
+        console.log("Gas used to blacklist provider with 20 active nodes in 200 node pool:", gasUsed);
     }
 
     function test_computePoolFlow() public {
