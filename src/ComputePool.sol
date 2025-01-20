@@ -296,7 +296,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     function _blacklistNode(uint256 poolId, address provider, address nodekey) internal {
         if (poolStates[poolId].poolNodes.contains(nodekey)) {
             (address node_provider, uint32 computeUnits,,) = computeRegistry.getNodeContractData(nodekey);
-            if (node_provider != provider) {
+            if (node_provider == provider) {
                 _removeNode(poolId, provider, nodekey, computeUnits);
                 if (poolStates[poolId].providerActiveNodes[node_provider] == 0) {
                     poolStates[poolId].poolProviders.remove(node_provider);
@@ -315,6 +315,9 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     }
 
     function blacklistNodeList(uint256 poolId, address provider, address[] memory nodekeys) external {
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist node");
+
         for (uint256 i = 0; i < nodekeys.length; i++) {
             _blacklistNode(poolId, provider, nodekeys[i]);
         }
