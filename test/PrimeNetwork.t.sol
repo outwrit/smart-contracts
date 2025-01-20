@@ -209,6 +209,11 @@ contract PrimeNetworkTest is Test {
         computePool.blacklistProvider(poolId, provider);
     }
 
+    function blacklistAndPurgeProviderFromPool(uint256 poolId, address provider) public {
+        vm.startPrank(pool_creator);
+        computePool.blacklistAndPurgeProvider(poolId, provider);
+    }
+
     function blacklistNodeFromPool(uint256 poolId, address provider, address node) public {
         vm.startPrank(pool_creator);
         computePool.blacklistNode(poolId, provider, node);
@@ -370,7 +375,7 @@ contract PrimeNetworkTest is Test {
         nodeJoin(domain, pool, provider_good1, node_good1);
 
         // check that provider level blacklist also works
-        blacklistProviderFromPool(pool, provider_good1);
+        blacklistAndPurgeProviderFromPool(pool, provider_good1);
         vm.expectRevert();
         nodeJoin(domain, pool, provider_good1, node_good2);
 
@@ -457,10 +462,17 @@ contract PrimeNetworkTest is Test {
             nodeJoinMultiple(domain, pool, ng[i].provider, ng[i].nodes);
         }
 
-        vm.startSnapshotGas("blacklist provider that has 20 active nodes in 200 node pool");
-        blacklistProviderFromPool(pool, ng[3].provider);
+        vm.startSnapshotGas("blacklist + purge provider that has 20 active nodes in 200 node pool");
+        blacklistAndPurgeProviderFromPool(pool, ng[3].provider);
         uint256 gasUsed = vm.stopSnapshotGas();
-        console.log("Gas used to blacklist provider with 20 active nodes in 200 node pool:", gasUsed);
+        console.log("Gas used to blacklist + purge provider with 20 active nodes in 200 node pool:", gasUsed);
+
+        // get list of nodes from pool to check no provider blacklisted nodes are left
+        address[] memory poolNodes = computePool.getComputePoolNodes(pool);
+        for (uint256 i = 0; i < poolNodes.length; i++) {
+            address node_provider = computeRegistry.getNodeProvider(poolNodes[i]);
+            assertNotEq(node_provider, ng[3].provider);
+        }
     }
 
     function test_computePoolFlow() public {

@@ -248,14 +248,20 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         emit ComputePoolLimitUpdated(poolId, computeLimit);
     }
 
+    function _blacklistProvider(uint256 poolId, address provider) internal {
+        // Add to blacklist set
+        poolStates[poolId].blacklistedProviders.add(provider);
+        emit ComputePoolProviderBlacklisted(poolId, provider);
+    }
+
     function blacklistProvider(uint256 poolId, address provider) external {
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
         require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist provider");
 
-        // Remove from active set
-        poolStates[poolId].poolProviders.remove(provider);
+        _blacklistProvider(poolId, provider);
+    }
 
-        // get all active + validated nodes for that provider and remove them
+    function _purgeProvider(uint256 poolId, address provider) internal {
         address[] memory provider_nodes = computeRegistry.getProviderValidatedNodes(provider, true);
         for (uint256 i = 0; i < provider_nodes.length; i++) {
             if (poolStates[poolId].poolNodes.contains(provider_nodes[i])) {
@@ -266,25 +272,52 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
             }
         }
 
-        // Add to blacklist set
-        poolStates[poolId].blacklistedProviders.add(provider);
-        emit ComputePoolProviderBlacklisted(poolId, provider);
+        emit ComputePoolPurgedProvider(poolId, provider);
+
+        // Remove from active set
+        poolStates[poolId].poolProviders.remove(provider);
+    }
+
+    function purgeProvider(uint256 poolId, address provider) external {
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can purge provider");
+
+        _purgeProvider(poolId, provider);
+    }
+
+    function blacklistAndPurgeProvider(uint256 poolId, address provider) external {
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can purge/blacklist provider");
+
+        _blacklistProvider(poolId, provider);
+        _purgeProvider(poolId, provider);
+    }
+
+    function _blacklistNode(uint256 poolId, address provider, address nodekey) internal {
+        if (poolStates[poolId].poolNodes.contains(nodekey)) {
+            (address node_provider, uint32 computeUnits,,) = computeRegistry.getNodeContractData(nodekey);
+            if (node_provider != provider) {
+                _removeNode(poolId, provider, nodekey, computeUnits);
+                if (poolStates[poolId].providerActiveNodes[node_provider] == 0) {
+                    poolStates[poolId].poolProviders.remove(node_provider);
+                }
+            }
+        }
+        poolStates[poolId].blacklistedNodes.add(nodekey);
+        emit ComputePoolNodeBlacklisted(poolId, provider, nodekey);
     }
 
     function blacklistNode(uint256 poolId, address provider, address nodekey) external {
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
         require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist node");
 
-        if (poolStates[poolId].poolNodes.contains(nodekey)) {
-            (address node_provider, uint32 computeUnits,,) = computeRegistry.getNodeContractData(nodekey);
-            require(node_provider == provider, "ComputePool: node does not exist");
-            _removeNode(poolId, provider, nodekey, computeUnits);
-            if (poolStates[poolId].providerActiveNodes[node_provider] == 0) {
-                poolStates[poolId].poolProviders.remove(node_provider);
-            }
+        _blacklistNode(poolId, provider, nodekey);
+    }
+
+    function blacklistNodeList(uint256 poolId, address provider, address[] memory nodekeys) external {
+        for (uint256 i = 0; i < nodekeys.length; i++) {
+            _blacklistNode(poolId, provider, nodekeys[i]);
         }
-        poolStates[poolId].blacklistedNodes.add(nodekey);
-        emit ComputePoolNodeBlacklisted(poolId, provider, nodekey);
     }
 
     //
