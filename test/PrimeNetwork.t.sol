@@ -241,9 +241,9 @@ contract PrimeNetworkTest is Test {
         console.log(msgString);
     }
 
-    function blacklistNodeFromPool(uint256 poolId, address provider, address node) public {
+    function blacklistNodeFromPool(uint256 poolId, address node) public {
         vm.startPrank(pool_creator);
-        computePool.blacklistNode(poolId, provider, node);
+        computePool.blacklistNode(poolId, node);
     }
 
     function test_federatorRole() public {
@@ -397,7 +397,7 @@ contract PrimeNetworkTest is Test {
         nodeJoin(domain, pool, provider_good1, node_good2);
 
         // check blacklist prevents nodes from rejoining
-        blacklistNodeFromPool(pool, provider_good1, node_good1);
+        blacklistNodeFromPool(pool, node_good1);
         vm.expectRevert();
         nodeJoin(domain, pool, provider_good1, node_good1);
 

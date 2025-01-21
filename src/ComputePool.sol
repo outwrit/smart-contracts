@@ -71,6 +71,14 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         computeRegistry.updateNodeStatus(provider, nodekey, false);
     }
 
+    function _removeNodeSafe(uint256 poolId, address provider, address node) internal {
+        (address node_provider, uint32 computeUnits,,) = computeRegistry.getNodeContractData(node);
+        if (node_provider == provider) {
+            _removeNode(poolId, provider, node, computeUnits);
+            emit ComputePoolLeft(poolId, provider, node);
+        }
+    }
+
     function _addNode(uint256 poolId, address provider, address nodekey, uint32 computeUnits) internal {
         // WARNING: order here is VERY important, computeUnits must be added AFTER joinPool
         poolStates[poolId].poolNodes.add(nodekey);
@@ -139,15 +147,9 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         emit ComputePoolEnded(poolId);
     }
 
-    function joinComputePool(uint256 poolId, address provider, address[] memory nodekey, bytes[] memory signatures)
-        external
+    function _joinComputePool(uint256 poolId, address provider, address[] memory nodekey, bytes[] memory signatures)
+        internal
     {
-        require(msg.sender == provider || msg.sender == address(this), "ComputePool: only provider can join pool");
-        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
-        require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: pool is not active");
-        require(!poolStates[poolId].blacklistedProviders.contains(provider), "ComputePool: provider is blacklisted");
-        require(computeRegistry.getWhitelistStatus(provider), "ComputePool: provider is not whitelisted");
-
         for (uint256 i = 0; i < nodekey.length; i++) {
             require(!poolStates[poolId].blacklistedNodes.contains(nodekey[i]), "ComputePool: node is blacklisted");
         }
@@ -158,7 +160,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         for (uint256 i = 0; i < nodekey.length; i++) {
             (address node_provider, uint32 computeUnits, bool isActive, bool isValidated) =
                 computeRegistry.getNodeContractData(nodekey[i]);
-            require(node_provider == provider, "ComputePool: node does not exist");
+            require(node_provider == provider, "ComputePool: node does not exist or not owned by provider");
             require(isActive == false, "ComputePool: node can only be in one pool at a time");
             require(isValidated, "ComputePool: node is not validated");
             require(
@@ -173,36 +175,59 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
             }
             _addNode(poolId, provider, nodekey[i], computeUnits);
         }
+    }
+
+    function joinComputePool(uint256 poolId, address provider, address[] memory nodekey, bytes[] memory signatures)
+        external
+    {
+        require(msg.sender == provider, "ComputePool: only provider can join pool");
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: pool is not active");
+        require(!poolStates[poolId].blacklistedProviders.contains(provider), "ComputePool: provider is blacklisted");
+        require(computeRegistry.getWhitelistStatus(provider), "ComputePool: provider is not whitelisted");
+
+        _joinComputePool(poolId, provider, nodekey, signatures);
+
         emit ComputePoolJoined(poolId, provider, nodekey);
     }
 
-    function leaveComputePool(uint256 poolId, address provider, address nodekey) external {
-        require(msg.sender == provider || msg.sender == address(this), "ComputePool: only provider can leave pool");
-        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
-
-        if (nodekey == address(0)) {
+    function _leaveComputePool(uint256 poolId, address provider, address[] memory nodekeys) internal {
+        if (nodekeys.length == 0) {
             // Remove all nodes belonging to that provider
             address[] memory nodes = poolStates[poolId].poolNodes.values();
             for (uint256 i = 0; i < nodes.length; ++i) {
-                (address node_provider, uint32 computeUnits,,) = computeRegistry.getNodeContractData(nodes[i]);
-                if (node_provider == provider) {
-                    _removeNode(poolId, provider, nodes[i], computeUnits);
-                    emit ComputePoolLeft(poolId, provider, nodes[i]);
-                }
+                _removeNodeSafe(poolId, provider, nodes[i]);
             }
         } else {
-            // Just remove the single node
-            (address node_provider, uint32 computeUnits,,) = computeRegistry.getNodeContractData(nodekey);
-            if (node_provider == provider) {
-                if (poolStates[poolId].poolNodes.remove(nodekey)) {
-                    _removeNode(poolId, provider, nodekey, computeUnits);
-                    emit ComputePoolLeft(poolId, provider, nodekey);
-                }
+            // Just remove the listed nodes
+            for (uint256 i = 0; i < nodekeys.length; i++) {
+                _removeNodeSafe(poolId, provider, nodekeys[i]);
             }
         }
         if (poolStates[poolId].providerActiveNodes[provider] == 0) {
             poolStates[poolId].poolProviders.remove(provider);
         }
+    }
+
+    function leaveComputePool(uint256 poolId, address provider, address nodekey) external {
+        require(msg.sender == provider, "ComputePool: only provider can leave pool");
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+
+        if (nodekey == address(0)) {
+            address[] memory nodekeys = new address[](0);
+            _leaveComputePool(poolId, provider, nodekeys);
+        } else {
+            address[] memory nodekeys = new address[](1);
+            nodekeys[0] = nodekey;
+            _leaveComputePool(poolId, provider, nodekeys);
+        }
+    }
+
+    function leaveComputePool(uint256 poolId, address provider, address[] memory nodekeys) external {
+        require(msg.sender == provider, "ComputePool: only provider can leave pool");
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+
+        _leaveComputePool(poolId, provider, nodekeys);
     }
 
     function changeComputePool(
@@ -216,15 +241,13 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         require(pools[toPoolId].status == PoolStatus.ACTIVE, "ComputePool: dest pool is not ready");
         address provider = msg.sender;
 
-        if (nodekeys.length == this.getProviderActiveNodesInPool(fromPoolId, provider)) {
+        if (nodekeys.length == poolStates[fromPoolId].providerActiveNodes[provider]) {
             // If all nodes are being moved, just move the provider
-            this.leaveComputePool(fromPoolId, provider, address(0));
+            _leaveComputePool(fromPoolId, provider, new address[](0));
         } else {
-            for (uint256 i = 0; i < nodekeys.length; i++) {
-                this.leaveComputePool(fromPoolId, provider, nodekeys[i]);
-            }
+            _leaveComputePool(fromPoolId, provider, nodekeys);
         }
-        this.joinComputePool(toPoolId, provider, nodekeys, signatures);
+        _joinComputePool(toPoolId, provider, nodekeys, signatures);
     }
 
     //
@@ -262,6 +285,17 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         _blacklistProvider(poolId, provider);
     }
 
+    function blacklistProviderList(uint256 poolId, address[] memory providers) external {
+        require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
+        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist provider");
+
+        for (uint256 i = 0; i < providers.length; i++) {
+            if (providers[i] != address(0)) {
+                _blacklistProvider(poolId, providers[i]);
+            }
+        }
+    }
+
     function _purgeProvider(uint256 poolId, address provider) internal {
         address[] memory provider_nodes = computeRegistry.getProviderValidatedNodes(provider, true);
         for (uint256 i = 0; i < provider_nodes.length; i++) {
@@ -296,35 +330,35 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         _purgeProvider(poolId, provider);
     }
 
-    function _blacklistNode(uint256 poolId, address provider, address nodekey) internal {
+    function _blacklistNode(uint256 poolId, address nodekey) internal {
+        address node_provider = address(0);
         if (poolStates[poolId].poolNodes.contains(nodekey)) {
-            (address node_provider, uint32 computeUnits,,) = computeRegistry.getNodeContractData(nodekey);
-            if (node_provider != address(0) && node_provider == provider) {
-                _removeNode(poolId, provider, nodekey, computeUnits);
+            uint32 computeUnits = 0;
+            (node_provider, computeUnits,,) = computeRegistry.getNodeContractData(nodekey);
+            if (node_provider != address(0)) {
+                _removeNode(poolId, node_provider, nodekey, computeUnits);
                 if (poolStates[poolId].providerActiveNodes[node_provider] == 0) {
                     poolStates[poolId].poolProviders.remove(node_provider);
                 }
             }
         }
         poolStates[poolId].blacklistedNodes.add(nodekey);
-        emit ComputePoolNodeBlacklisted(poolId, provider, nodekey);
+        emit ComputePoolNodeBlacklisted(poolId, node_provider, nodekey);
     }
 
-    function blacklistNode(uint256 poolId, address provider, address nodekey) external {
+    function blacklistNode(uint256 poolId, address nodekey) external {
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
         require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist node");
-        require(provider != address(0), "ComputePool: provider cannot be zero address");
 
-        _blacklistNode(poolId, provider, nodekey);
+        _blacklistNode(poolId, nodekey);
     }
 
-    function blacklistNodeList(uint256 poolId, address provider, address[] memory nodekeys) external {
+    function blacklistNodeList(uint256 poolId, address[] memory nodekeys) external {
         require(pools[poolId].poolId == poolId, "ComputePool: pool does not exist");
         require(pools[poolId].creator == msg.sender, "ComputePool: only creator can blacklist node");
-        require(provider != address(0), "ComputePool: provider cannot be zero address");
 
         for (uint256 i = 0; i < nodekeys.length; i++) {
-            _blacklistNode(poolId, provider, nodekeys[i]);
+            _blacklistNode(poolId, nodekeys[i]);
         }
     }
 
