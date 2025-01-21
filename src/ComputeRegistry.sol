@@ -163,6 +163,10 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         return providers[provider];
     }
 
+    function getProviderActiveNodes(address provider) external view returns (uint32) {
+        return providers[provider].activeNodes;
+    }
+
     function getNodes(address provider, uint256 page, uint256 limit) external view returns (ComputeNode[] memory) {
         if (page == 0 && limit == 0) {
             return providers[provider].nodes;
@@ -233,5 +237,9 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
 
     function getProviderAddressList() external view returns (address[] memory) {
         return providerSet.values();
+    }
+
+    function checkProviderExists(address provider) external view returns (bool) {
+        return providerSet.contains(provider);
     }
 }
