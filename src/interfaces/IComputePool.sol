@@ -80,13 +80,12 @@ interface IComputePool is IAccessControlEnumerable {
     function getComputePool(uint256 poolId) external view returns (PoolInfo memory);
     function getComputePoolProviders(uint256 poolId) external view returns (address[] memory);
     function getComputePoolNodes(uint256 poolId) external view returns (address[] memory);
-    function getComputePoolBlacklistedProviders(uint256 poolId) external view returns (address[] memory);
-    function getComputePoolBlacklistedNodes(uint256 poolId) external view returns (address[] memory);
     function getComputePoolTotalCompute(uint256 poolId) external view returns (uint256);
     function getProviderActiveNodesInPool(uint256 poolId, address provider) external view returns (uint256);
     function getRewardToken() external view returns (address);
     function getRewardDistributorForPool(uint256 poolId) external view returns (IRewardsDistributor);
     function isNodeInPool(uint256 poolId, address nodekey) external view returns (bool);
+    function isProviderInPool(uint256 poolId, address provider) external view returns (bool);
     function isProviderBlacklistedFromPool(uint256 poolId, address provider) external returns (bool);
     function isNodeBlacklistedFromPool(uint256 poolId, address nodekey) external returns (bool);
 }

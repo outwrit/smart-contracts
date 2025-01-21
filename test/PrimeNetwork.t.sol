@@ -246,6 +246,24 @@ contract PrimeNetworkTest is Test {
         computePool.blacklistNode(poolId, node);
     }
 
+    function blacklistNodeListFromPool(uint256 poolId, address[] memory nodes) public {
+        vm.startPrank(pool_creator);
+        computePool.blacklistNodeList(poolId, nodes);
+        uint256 gasUsed = vm.snapshotGasLastCall("blacklist node list from pool");
+        string memory msgString = string(
+            abi.encodePacked(
+                "blacklist node list from pool",
+                " - nodes_in_pool:",
+                vm.toString(computePool.getComputePoolNodes(poolId).length),
+                " - nodes_in_list:",
+                vm.toString(nodes.length),
+                " - gas:",
+                vm.toString(gasUsed)
+            )
+        );
+        console.log(msgString);
+    }
+
     function test_federatorRole() public {
         vm.startPrank(address(0));
         vm.expectRevert();
@@ -459,6 +477,7 @@ contract PrimeNetworkTest is Test {
         uint256 num_nodes_per_provider = 20;
         uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
         uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
+        uint256 blacklist_provider = 4;
         startPool(pool);
 
         NodeGroup[] memory ng = new NodeGroup[](num_providers);
@@ -491,14 +510,42 @@ contract PrimeNetworkTest is Test {
             assertEq(computeRegistry.getProvider(pa).activeNodes, num_nodes_per_provider);
         }
 
-        blacklistAndPurgeProviderFromPool(pool, ng[3].provider);
+        blacklistAndPurgeProviderFromPool(pool, ng[blacklist_provider].provider);
 
         // get list of nodes from pool to check no provider blacklisted nodes are left
         address[] memory poolNodes = computePool.getComputePoolNodes(pool);
         for (uint256 i = 0; i < poolNodes.length; i++) {
             address node_provider = computeRegistry.getNodeProvider(poolNodes[i]);
-            assertNotEq(node_provider, ng[3].provider);
+            assertNotEq(node_provider, ng[blacklist_provider].provider);
         }
+
+        uint256 span = 2;
+        uint256 idx = 0;
+        address[] memory nodes = new address[](num_nodes_per_provider * span + 1);
+        // make up a node to test that the function handles it correctly
+        nodes[nodes.length - 1] = makeAddr("nonexisting");
+
+        for (uint256 i = 0; i < span; i++) {
+            for (uint256 j = 0; j < num_nodes_per_provider; j++) {
+                nodes[idx] = ng[i].nodes[j];
+                idx++;
+            }
+        }
+
+        blacklistNodeListFromPool(pool, nodes);
+
+        // ensure nodes from span are also gone
+        for (uint256 i = 0; i < nodes.length; i++) {
+            bool found = computePool.isNodeInPool(pool, nodes[i]);
+            assertEq(found, false);
+        }
+
+        // ensure all span providers are now not in pool anymore
+        for (uint256 i = 0; i < span; i++) {
+            bool found = computePool.isProviderInPool(pool, ng[i].provider);
+            assertEq(found, false);
+        }
+        assertEq(computePool.isProviderInPool(pool, ng[blacklist_provider].provider), false);
     }
 
     function test_computePoolFlow() public {

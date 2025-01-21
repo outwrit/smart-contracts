@@ -19,8 +19,8 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         mapping(address => uint256) providerActiveNodes;
         EnumerableSet.AddressSet poolProviders;
         EnumerableSet.AddressSet poolNodes;
-        EnumerableSet.AddressSet blacklistedProviders;
-        EnumerableSet.AddressSet blacklistedNodes;
+        mapping(address => bool) blacklistedProviders;
+        mapping(address => bool) blacklistedNodes;
         IRewardsDistributor rewardsDistributor;
     }
 
@@ -48,7 +48,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
 
     modifier onlyValidProvider(uint256 poolId, address provider) {
         require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: pool is not active");
-        require(!poolStates[poolId].blacklistedProviders.contains(provider), "ComputePool: provider is blacklisted");
+        require(!poolStates[poolId].blacklistedProviders[provider], "ComputePool: provider is blacklisted");
         require(
             computeRegistry.getWhitelistStatus(provider),
             "ComputePool: provider has not been allowed to join pools by federator"
@@ -168,7 +168,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         internal
     {
         for (uint256 i = 0; i < nodekey.length; i++) {
-            require(!poolStates[poolId].blacklistedNodes.contains(nodekey[i]), "ComputePool: node is blacklisted");
+            require(!poolStates[poolId].blacklistedNodes[nodekey[i]], "ComputePool: node is blacklisted");
         }
 
         if (!poolStates[poolId].poolProviders.contains(provider)) {
@@ -306,7 +306,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
 
     function _blacklistProvider(uint256 poolId, address provider) internal {
         // Add to blacklist set
-        poolStates[poolId].blacklistedProviders.add(provider);
+        poolStates[poolId].blacklistedProviders[provider] = true;
         emit ComputePoolProviderBlacklisted(poolId, provider);
     }
 
@@ -382,7 +382,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
                 }
             }
         }
-        poolStates[poolId].blacklistedNodes.add(nodekey);
+        poolStates[poolId].blacklistedNodes[nodekey] = true;
         emit ComputePoolNodeBlacklisted(poolId, node_provider, nodekey);
     }
 
@@ -431,23 +431,19 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         return pools[poolId].totalCompute;
     }
 
-    function getComputePoolBlacklistedProviders(uint256 poolId) external view returns (address[] memory) {
-        return poolStates[poolId].blacklistedProviders.values();
-    }
-
-    function getComputePoolBlacklistedNodes(uint256 poolId) external view returns (address[] memory) {
-        return poolStates[poolId].blacklistedNodes.values();
-    }
-
     function isProviderBlacklistedFromPool(uint256 poolId, address provider) external view returns (bool) {
-        return poolStates[poolId].blacklistedProviders.contains(provider);
+        return poolStates[poolId].blacklistedProviders[provider];
     }
 
     function isNodeBlacklistedFromPool(uint256 poolId, address nodekey) external view returns (bool) {
-        return poolStates[poolId].blacklistedNodes.contains(nodekey);
+        return poolStates[poolId].blacklistedNodes[nodekey];
     }
 
     function isNodeInPool(uint256 poolId, address nodekey) external view returns (bool) {
         return poolStates[poolId].poolNodes.contains(nodekey);
+    }
+
+    function isProviderInPool(uint256 poolId, address provider) external view returns (bool) {
+        return poolStates[poolId].poolProviders.contains(provider);
     }
 }
