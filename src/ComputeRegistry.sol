@@ -171,6 +171,10 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         return providers[provider].activeNodes;
     }
 
+    function getProviderTotalNodes(address provider) external view returns (uint32) {
+        return uint32(providers[provider].nodes.length);
+    }
+
     function getNodes(address provider, uint256 page, uint256 limit) external view returns (ComputeNode[] memory) {
         if (page == 0 && limit == 0) {
             return providers[provider].nodes;

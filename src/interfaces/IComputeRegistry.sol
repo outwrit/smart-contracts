@@ -54,6 +54,7 @@ interface IComputeRegistry is IAccessControlEnumerable {
     function getNodeValidationStatus(address provider, address subkey) external returns (bool);
     function getProvider(address provider) external view returns (ComputeProvider memory);
     function getProviderActiveNodes(address provider) external view returns (uint32);
+    function getProviderTotalNodes(address provider) external view returns (uint32);
     function getProviderAddressList() external view returns (address[] memory);
     function getProviderValidatedNodes(address provider, bool filterForActive)
         external
