@@ -58,9 +58,11 @@ interface IComputePool is IAccessControlEnumerable {
     ) external returns (uint256);
     function startComputePool(uint256 poolId) external;
     function endComputePool(uint256 poolId) external;
+    function joinComputePool(uint256 poolId, address provider, address nodekeys, bytes memory signature) external;
     function joinComputePool(uint256 poolId, address provider, address[] memory nodekeys, bytes[] memory signatures)
         external;
     function leaveComputePool(uint256 poolId, address provider, address nodekey) external;
+    function leaveComputePool(uint256 poolId, address provider, address[] memory nodekeys) external;
     function changeComputePool(
         uint256 fromPoolId,
         uint256 toPoolId,
@@ -71,6 +73,7 @@ interface IComputePool is IAccessControlEnumerable {
     function updateComputeLimit(uint256 poolId, uint256 computeLimit) external;
     function purgeProvider(uint256 poolId, address provider) external;
     function blacklistProvider(uint256 poolId, address provider) external;
+    function blacklistProviderList(uint256 poolId, address[] memory providers) external;
     function blacklistAndPurgeProvider(uint256 poolId, address provider) external;
     function blacklistNode(uint256 poolId, address nodekey) external;
     function blacklistNodeList(uint256 poolId, address[] memory nodekeys) external;
