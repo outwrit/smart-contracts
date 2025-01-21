@@ -33,6 +33,10 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         }
     }
 
+    function _nodeExists(address provider, address subkey) internal view returns (bool) {
+        return providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].subkey == subkey;
+    }
+
     function setComputePool(address computePool) external onlyRole(PRIME_ROLE) {
         _grantRole(COMPUTE_POOL_ROLE, computePool);
     }
@@ -85,7 +89,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     }
 
     function removeComputeNode(address provider, address subkey) external onlyRole(PRIME_ROLE) returns (bool) {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
         ComputeProvider storage cp = providers[provider];
         uint256 index = nodeSubkeyToIndex.get(subkey);
         ComputeNode memory cn = cp.nodes[index];
@@ -106,13 +110,13 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     }
 
     function updateNodeURI(address provider, address subkey, string calldata specsURI) external onlyRole(PRIME_ROLE) {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.specsURI = specsURI;
     }
 
     function updateNodeStatus(address provider, address subkey, bool isActive) external onlyRole(COMPUTE_POOL_ROLE) {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.isActive = isActive;
         if (isActive) {
@@ -126,7 +130,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         external
         onlyRole(PRIME_ROLE)
     {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.benchmarkScore = uint32(benchmarkScore);
     }
@@ -136,7 +140,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     }
 
     function setNodeValidationStatus(address provider, address subkey, bool status) external onlyRole(PRIME_ROLE) {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
         bool current_status = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].isValidated;
         if (current_status == status) {
             return;
