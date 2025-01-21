@@ -120,7 +120,7 @@ contract PrimeNetwork is AccessControlEnumerable {
 
     function deregisterProvider(address provider) external {
         require(hasRole(VALIDATOR_ROLE, msg.sender) || msg.sender == provider, "Unauthorized");
-        require(computeRegistry.getProvider(provider).activeNodes == 0, "Provider has active nodes");
+        require(computeRegistry.getProviderActiveNodes(provider) == 0, "Provider has active nodes");
         computeRegistry.deregister(provider);
         uint256 stake = stakeManager.getStake(provider);
         stakeManager.unstake(provider, stake);
@@ -132,7 +132,7 @@ contract PrimeNetwork is AccessControlEnumerable {
     {
         address provider = msg.sender;
         // check provider exists
-        require(computeRegistry.getProvider(provider).providerAddress == provider, "Provider not registered");
+        require(computeRegistry.checkProviderExists(provider), "Provider not registered");
         require(_verifyNodekeySignature(provider, nodekey, signature), "Invalid signature");
         computeRegistry.addComputeNode(provider, nodekey, computeUnits, specsURI);
         emit ComputeNodeAdded(provider, nodekey, specsURI);

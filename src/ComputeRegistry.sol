@@ -4,16 +4,20 @@ pragma solidity ^0.8.0;
 import "./interfaces/IComputeRegistry.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
     bytes32 public constant COMPUTE_POOL_ROLE = keccak256("COMPUTE_POOL_ROLE");
 
     using EnumerableMap for EnumerableMap.AddressToUintMap;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     mapping(address => ComputeProvider) public providers;
     mapping(address => address) public nodeProviderMap;
     EnumerableMap.AddressToUintMap private nodeSubkeyToIndex;
+    EnumerableSet.AddressSet private providerSet;
+    mapping(address => EnumerableSet.AddressSet) private providerValidatedNodes;
 
     constructor(address primeAdmin) {
         _grantRole(DEFAULT_ADMIN_ROLE, primeAdmin);
@@ -29,6 +33,10 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         }
     }
 
+    function _nodeExists(address provider, address subkey) internal view returns (bool) {
+        return providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].subkey == subkey;
+    }
+
     function setComputePool(address computePool) external onlyRole(PRIME_ROLE) {
         _grantRole(COMPUTE_POOL_ROLE, computePool);
     }
@@ -40,6 +48,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
             cp.isWhitelisted = false;
             cp.activeNodes = 0;
             cp.nodes = new ComputeNode[](0);
+            providerSet.add(provider);
             return true;
         }
         return false;
@@ -50,6 +59,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
             return false;
         } else {
             delete providers[provider];
+            providerSet.remove(provider);
             return true;
         }
     }
@@ -79,7 +89,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     }
 
     function removeComputeNode(address provider, address subkey) external onlyRole(PRIME_ROLE) returns (bool) {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
         ComputeProvider storage cp = providers[provider];
         uint256 index = nodeSubkeyToIndex.get(subkey);
         ComputeNode memory cn = cp.nodes[index];
@@ -100,13 +110,13 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     }
 
     function updateNodeURI(address provider, address subkey, string calldata specsURI) external onlyRole(PRIME_ROLE) {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.specsURI = specsURI;
     }
 
     function updateNodeStatus(address provider, address subkey, bool isActive) external onlyRole(COMPUTE_POOL_ROLE) {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.isActive = isActive;
         if (isActive) {
@@ -120,7 +130,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         external
         onlyRole(PRIME_ROLE)
     {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
         ComputeNode storage cn = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
         cn.benchmarkScore = uint32(benchmarkScore);
     }
@@ -130,7 +140,16 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     }
 
     function setNodeValidationStatus(address provider, address subkey, bool status) external onlyRole(PRIME_ROLE) {
-        require(_fetchNodeOrZero(provider, subkey).subkey == subkey, "ComputeRegistry: node not found");
+        require(_nodeExists(provider, subkey), "ComputeRegistry: node not found");
+        bool current_status = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].isValidated;
+        if (current_status == status) {
+            return;
+        }
+        if (status) {
+            providerValidatedNodes[provider].add(subkey);
+        } else {
+            providerValidatedNodes[provider].remove(subkey);
+        }
         providers[provider].nodes[nodeSubkeyToIndex.get(subkey)].isValidated = status;
     }
 
@@ -146,6 +165,14 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
 
     function getProvider(address provider) external view returns (ComputeProvider memory) {
         return providers[provider];
+    }
+
+    function getProviderActiveNodes(address provider) external view returns (uint32) {
+        return providers[provider].activeNodes;
+    }
+
+    function getProviderTotalNodes(address provider) external view returns (uint32) {
+        return uint32(providers[provider].nodes.length);
     }
 
     function getNodes(address provider, uint256 page, uint256 limit) external view returns (ComputeNode[] memory) {
@@ -169,7 +196,58 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         return _fetchNodeOrZero(provider, subkey);
     }
 
+    function getNode(address subkey) external view returns (ComputeNode memory) {
+        address provider = nodeProviderMap[subkey];
+        return _fetchNodeOrZero(provider, subkey);
+    }
+
+    function getProviderValidatedNodes(address provider, bool filterForActive)
+        external
+        view
+        returns (address[] memory)
+    {
+        address[] memory validatedNodes = providerValidatedNodes[provider].values();
+        if (!filterForActive) {
+            return validatedNodes;
+        } else {
+            address[] memory result = new address[](providers[provider].activeNodes);
+            uint32 activeCount = 0;
+            for (uint256 i = 0; i < validatedNodes.length; i++) {
+                if (providers[provider].nodes[nodeSubkeyToIndex.get(validatedNodes[i])].isActive) {
+                    result[activeCount] = validatedNodes[i];
+                    activeCount++;
+                }
+            }
+            return result;
+        }
+    }
+
+    function getNodeComputeUnits(address subkey) external view returns (uint256) {
+        address provider = nodeProviderMap[subkey];
+        return _fetchNodeOrZero(provider, subkey).computeUnits;
+    }
+
     function getNodeProvider(address subkey) external view returns (address) {
         return nodeProviderMap[subkey];
+    }
+
+    function getNodeContractData(address subkey) external view returns (address, uint32, bool, bool) {
+        // optimize by not pulling out entire node struct
+        address provider = nodeProviderMap[subkey];
+        if (provider != address(0)) {
+            ComputeNode storage node = providers[provider].nodes[nodeSubkeyToIndex.get(subkey)];
+            if (node.subkey == subkey) {
+                return (node.provider, node.computeUnits, node.isActive, node.isValidated);
+            }
+        }
+        return (address(0), 0, false, false);
+    }
+
+    function getProviderAddressList() external view returns (address[] memory) {
+        return providerSet.values();
+    }
+
+    function checkProviderExists(address provider) external view returns (bool) {
+        return providerSet.contains(provider);
     }
 }

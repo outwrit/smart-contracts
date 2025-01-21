@@ -187,8 +187,21 @@ contract PrimeNetworkTest is Test {
             bytes memory signature = abi.encodePacked(r, s, v);
             signatures[i] = signature;
         }
+        string memory msgString = string(
+            abi.encodePacked(
+                "add (",
+                vm.toString(nodes.length),
+                ") nodes to pool (",
+                vm.toString(poolId),
+                ") for provider (",
+                vm.toString(provider),
+                ") using multi join - gas:"
+            )
+        );
         vm.startPrank(provider);
         computePool.joinComputePool(poolId, provider, nodes, signatures);
+        uint256 gasUsed = vm.snapshotGasLastCall(msgString);
+        console.log(msgString, gasUsed);
     }
 
     function nodeLeave(uint256 poolId, address provider, address node) public {
@@ -206,9 +219,49 @@ contract PrimeNetworkTest is Test {
         computePool.blacklistProvider(poolId, provider);
     }
 
-    function blacklistNodeFromPool(uint256 poolId, address provider, address node) public {
+    function blacklistAndPurgeProviderFromPool(uint256 poolId, address provider) public {
+        // get node list length
+        uint256 nodes_of_provider = computeRegistry.getProvider(provider).nodes.length;
+        // get nodes in pool from provider
+        uint256 nodes_in_pool = computePool.getProviderActiveNodesInPool(poolId, provider);
         vm.startPrank(pool_creator);
-        computePool.blacklistNode(poolId, provider, node);
+        computePool.blacklistAndPurgeProvider(poolId, provider);
+        uint256 gasUsed = vm.snapshotGasLastCall("blacklist and purge provider from pool");
+        string memory msgString = string(
+            abi.encodePacked(
+                "blacklist and purge provider from pool",
+                " - nodes_in_pool_from_provider:",
+                vm.toString(nodes_in_pool),
+                " - total_nodes_owner_by_provider:",
+                vm.toString(nodes_of_provider),
+                " - gas:",
+                vm.toString(gasUsed)
+            )
+        );
+        console.log(msgString);
+    }
+
+    function blacklistNodeFromPool(uint256 poolId, address node) public {
+        vm.startPrank(pool_creator);
+        computePool.blacklistNode(poolId, node);
+    }
+
+    function blacklistNodeListFromPool(uint256 poolId, address[] memory nodes) public {
+        vm.startPrank(pool_creator);
+        computePool.blacklistNodeList(poolId, nodes);
+        uint256 gasUsed = vm.snapshotGasLastCall("blacklist node list from pool");
+        string memory msgString = string(
+            abi.encodePacked(
+                "blacklist node list from pool",
+                " - nodes_in_pool:",
+                vm.toString(computePool.getComputePoolNodes(poolId).length),
+                " - nodes_in_list:",
+                vm.toString(nodes.length),
+                " - gas:",
+                vm.toString(gasUsed)
+            )
+        );
+        console.log(msgString);
     }
 
     function test_federatorRole() public {
@@ -362,12 +415,12 @@ contract PrimeNetworkTest is Test {
         nodeJoin(domain, pool, provider_good1, node_good2);
 
         // check blacklist prevents nodes from rejoining
-        blacklistNodeFromPool(pool, provider_good1, node_good1);
+        blacklistNodeFromPool(pool, node_good1);
         vm.expectRevert();
         nodeJoin(domain, pool, provider_good1, node_good1);
 
         // check that provider level blacklist also works
-        blacklistProviderFromPool(pool, provider_good1);
+        blacklistAndPurgeProviderFromPool(pool, provider_good1);
         vm.expectRevert();
         nodeJoin(domain, pool, provider_good1, node_good2);
 
@@ -424,12 +477,13 @@ contract PrimeNetworkTest is Test {
         uint256 num_nodes_per_provider = 20;
         uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
         uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
+        uint256 blacklist_provider = 4;
         startPool(pool);
 
         NodeGroup[] memory ng = new NodeGroup[](num_providers);
 
         for (uint256 i = 0; i < num_providers; i++) {
-            string memory provider = string(abi.encodePacked(provider_prefix, vm.toString(i)));
+            string memory provider = string(abi.encodePacked(provider_prefix, vm.toString(i + 1)));
             (address pa, uint256 pk) = makeAddrAndKey(provider);
             fundProvider(pa);
             addProvider(pa);
@@ -439,24 +493,59 @@ contract PrimeNetworkTest is Test {
             ng[i].nodes = new address[](num_nodes_per_provider);
             ng[i].node_keys = new uint256[](num_nodes_per_provider);
             for (uint256 j = 0; j < num_nodes_per_provider; j++) {
-                string memory node = string(abi.encodePacked(node_prefix, vm.toString(i), "_", vm.toString(j)));
+                string memory node = string(abi.encodePacked(node_prefix, vm.toString(i + 1), "_", vm.toString(j + 1)));
                 (address na, uint256 nk) = makeAddrAndKey(node);
                 ng[i].nodes[j] = na;
                 ng[i].node_keys[j] = nk;
                 addNode(pa, na, nk);
                 validateNode(pa, na);
-                nodeJoin(domain, pool, pa, na);
+                // nodeJoin(domain, pool, pa, na);
                 // confirm node registration
                 ComputeRegistry.ComputeNode memory nx = computeRegistry.getNode(pa, na);
                 assertEq(nx.provider, pa);
                 assertEq(nx.subkey, na);
             }
+            nodeJoinMultiple(domain, pool, ng[i].provider, ng[i].nodes);
+            // check that the number of nodes that joined for the provider matches expectation
+            assertEq(computeRegistry.getProvider(pa).activeNodes, num_nodes_per_provider);
         }
 
-        vm.startSnapshotGas("blacklist provider that has 20 active nodes in 200 node pool");
-        blacklistProviderFromPool(pool, ng[3].provider);
-        uint256 gasUsed = vm.stopSnapshotGas();
-        console.log("Gas used to blacklist provider with 20 active nodes in 200 node pool:", gasUsed);
+        blacklistAndPurgeProviderFromPool(pool, ng[blacklist_provider].provider);
+
+        // get list of nodes from pool to check no provider blacklisted nodes are left
+        address[] memory poolNodes = computePool.getComputePoolNodes(pool);
+        for (uint256 i = 0; i < poolNodes.length; i++) {
+            address node_provider = computeRegistry.getNodeProvider(poolNodes[i]);
+            assertNotEq(node_provider, ng[blacklist_provider].provider);
+        }
+
+        uint256 span = 2;
+        uint256 idx = 0;
+        address[] memory nodes = new address[](num_nodes_per_provider * span + 1);
+        // make up a node to test that the function handles it correctly
+        nodes[nodes.length - 1] = makeAddr("nonexisting");
+
+        for (uint256 i = 0; i < span; i++) {
+            for (uint256 j = 0; j < num_nodes_per_provider; j++) {
+                nodes[idx] = ng[i].nodes[j];
+                idx++;
+            }
+        }
+
+        blacklistNodeListFromPool(pool, nodes);
+
+        // ensure nodes from span are also gone
+        for (uint256 i = 0; i < nodes.length; i++) {
+            bool found = computePool.isNodeInPool(pool, nodes[i]);
+            assertEq(found, false);
+        }
+
+        // ensure all span providers are now not in pool anymore
+        for (uint256 i = 0; i < span; i++) {
+            bool found = computePool.isProviderInPool(pool, ng[i].provider);
+            assertEq(found, false);
+        }
+        assertEq(computePool.isProviderInPool(pool, ng[blacklist_provider].provider), false);
     }
 
     function test_computePoolFlow() public {

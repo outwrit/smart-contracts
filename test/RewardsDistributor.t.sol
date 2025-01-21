@@ -19,9 +19,16 @@ contract MockComputePool {
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
     bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");
     address public rewardToken;
+    RewardsDistributor public distributor;
+    MockComputeRegistry public computeRegistry;
+    mapping(address => bool) public nodes;
+    uint256 poolId;
+    uint256 totalCompute;
 
-    constructor(address _rewardToken) {
+    constructor(address _rewardToken, uint256 _poolId, MockComputeRegistry _computeRegistry) {
         rewardToken = _rewardToken;
+        poolId = _poolId;
+        computeRegistry = _computeRegistry;
     }
 
     function getRewardToken() external view returns (address) {
@@ -40,12 +47,43 @@ contract MockComputePool {
         return address(0);
     }
 
+    function isNodeInPool(uint256 _poolId, address node) external view returns (bool) {
+        poolId == _poolId;
+        return nodes[node];
+    }
+
+    function joinComputePool(address node, uint256 cu) external {
+        if (nodes[node]) {
+            revert("Node already active");
+        }
+        nodes[node] = true;
+        computeRegistry.setNodeComputeUnits(node, cu);
+        distributor.joinPool(node);
+        totalCompute += cu;
+    }
+
+    function leaveComputePool(address node) external {
+        nodes[node] = false;
+        distributor.leavePool(node);
+        totalCompute -= computeRegistry.getNodeComputeUnits(node);
+    }
+
+    function setDistributorContract(RewardsDistributor _distributor) external {
+        distributor = _distributor;
+    }
+
+    function getComputePoolTotalCompute(uint256 _poolId) external view returns (uint256) {
+        _poolId == _poolId;
+        return totalCompute;
+    }
+
     // Add any additional mock functions if needed for your tests
 }
 
 contract MockComputeRegistry {
     // node => provider
     mapping(address => address) public nodeProviderMap;
+    mapping(address => uint256) public nodeComputeUnits;
 
     function setNodeProvider(address node, address provider) external {
         nodeProviderMap[node] = provider;
@@ -53,6 +91,14 @@ contract MockComputeRegistry {
 
     function getNodeProvider(address node) external view returns (address) {
         return nodeProviderMap[node];
+    }
+
+    function setNodeComputeUnits(address node, uint256 cu) external {
+        nodeComputeUnits[node] = cu;
+    }
+
+    function getNodeComputeUnits(address node) external view returns (uint256) {
+        return nodeComputeUnits[node];
     }
 
     // Add any additional mock functions if needed for your tests
@@ -82,8 +128,8 @@ contract RewardsDistributorTest is Test {
         mockRewardToken.mint(address(this), 1_000_000 ether); // Mint to ourselves for testing
 
         // 2. Deploy mocks for IComputePool & IComputeRegistry
-        mockComputePool = new MockComputePool(address(mockRewardToken));
         mockComputeRegistry = new MockComputeRegistry();
+        mockComputePool = new MockComputePool(address(mockRewardToken), 1, mockComputeRegistry);
 
         // 3. Deploy the RewardsDistributor
         distributor = new RewardsDistributor(
@@ -108,6 +154,9 @@ contract RewardsDistributorTest is Test {
         mockComputeRegistry.setNodeProvider(node, nodeProvider);
         mockComputeRegistry.setNodeProvider(node1, nodeProvider1);
         mockComputeRegistry.setNodeProvider(node2, nodeProvider2);
+
+        // 8. Set distribute contract in mockComputePool
+        mockComputePool.setDistributorContract(distributor);
     }
 
     /// ---------------------------------------
@@ -139,7 +188,7 @@ contract RewardsDistributorTest is Test {
 
         // Have the compute pool (with role) call joinPool
         vm.prank(address(mockComputePool));
-        distributor.joinPool(node, 10);
+        mockComputePool.joinComputePool(node, 10);
 
         // Now node is active
         (cu,,, isActive) = distributor.nodeInfo(node);
@@ -149,7 +198,7 @@ contract RewardsDistributorTest is Test {
         // Trying to join again should revert since isActive is true
         vm.expectRevert("Node already active");
         vm.prank(address(mockComputePool));
-        distributor.joinPool(node, 10);
+        mockComputePool.joinComputePool(node, 10);
     }
 
     /// ---------------------------------------
@@ -158,7 +207,7 @@ contract RewardsDistributorTest is Test {
     function testLeavePool() public {
         // Must join first
         vm.prank(address(mockComputePool));
-        distributor.joinPool(node, 10);
+        mockComputePool.joinComputePool(node, 10);
 
         // Node is active
         (,,, bool isActive) = distributor.nodeInfo(node);
@@ -173,7 +222,7 @@ contract RewardsDistributorTest is Test {
 
         // Now leave
         vm.prank(address(mockComputePool));
-        distributor.leavePool(node);
+        mockComputePool.leaveComputePool(node);
 
         // Node is no longer active
         (,,, isActive) = distributor.nodeInfo(node);
@@ -198,7 +247,7 @@ contract RewardsDistributorTest is Test {
 
         // 2. Node joins
         vm.prank(address(mockComputePool));
-        distributor.joinPool(node, 10);
+        mockComputePool.joinComputePool(node, 10);
 
         // 3. Move forward in time
         vm.warp(block.timestamp + 10);
@@ -240,7 +289,7 @@ contract RewardsDistributorTest is Test {
     function testEndRewards() public {
         // Node joins first
         vm.prank(address(mockComputePool));
-        distributor.joinPool(node, 10);
+        mockComputePool.joinComputePool(node, 10);
 
         // Set a nonzero reward rate
         vm.prank(manager);
@@ -282,14 +331,14 @@ contract RewardsDistributorTest is Test {
 
         // 2. Node1 joins at t=0 with 10 computeUnits
         vm.prank(address(mockComputePool));
-        distributor.joinPool(node1, 10);
+        mockComputePool.joinComputePool(node1, 10);
 
         // Warp 15s => now t=15
         skip(15);
 
         // 3. Node2 joins at t=15, with 10 computeUnits as well
         vm.prank(address(mockComputePool));
-        distributor.joinPool(node2, 10);
+        mockComputePool.joinComputePool(node2, 10);
 
         // Warp another 15s => now t=30
         skip(15);
@@ -354,7 +403,7 @@ contract RewardsDistributorTest is Test {
 
         // Node1 joins with 10 computeUnits
         vm.prank(address(mockComputePool));
-        distributor.joinPool(node1, 10);
+        mockComputePool.joinComputePool(node1, 10);
 
         // Warp 10s => Node1 accumulates at 50 tokens/sec
         skip(10);
@@ -368,7 +417,7 @@ contract RewardsDistributorTest is Test {
 
         // Step 5: Node2 joins with 5 computeUnits
         vm.prank(address(mockComputePool));
-        distributor.joinPool(node2, 5);
+        mockComputePool.joinComputePool(node2, 5);
 
         // Warp 10s more => Now Node1(10 CU) & Node2(5 CU) share 100 tokens/sec
         skip(10);
