@@ -19,6 +19,8 @@ event ComputePoolJoined(uint256 indexed poolId, address indexed provider, addres
 
 event ComputePoolLeft(uint256 indexed poolId, address indexed provider, address nodekey);
 
+event ComputePoolNodeEjected(uint256 indexed poolId, address indexed provider, address nodekey);
+
 event ComputePoolPurgedProvider(uint256 indexed poolId, address indexed provider);
 
 event ComputePoolProviderBlacklisted(uint256 indexed poolId, address indexed provider);
@@ -72,6 +74,7 @@ interface IComputePool is IAccessControlEnumerable {
     function updateComputePoolURI(uint256 poolId, string calldata poolDataURI) external;
     function updateComputeLimit(uint256 poolId, uint256 computeLimit) external;
     function purgeProvider(uint256 poolId, address provider) external;
+    function ejectNode(uint256 poolId, address nodekey) external;
     function blacklistProvider(uint256 poolId, address provider) external;
     function blacklistProviderList(uint256 poolId, address[] memory providers) external;
     function blacklistAndPurgeProvider(uint256 poolId, address provider) external;

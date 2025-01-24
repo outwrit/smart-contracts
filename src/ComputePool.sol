@@ -304,6 +304,19 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         emit ComputePoolLimitUpdated(poolId, computeLimit);
     }
 
+    function ejectNode(uint256 poolId, address nodekey) external onlyExistingPool(poolId) onlyPoolCreator(poolId) {
+        require(poolStates[poolId].poolNodes.contains(nodekey), "ComputePool: node not in pool");
+
+        (address node_provider, uint32 computeUnits,,) = computeRegistry.getNodeContractData(nodekey);
+        _removeNode(poolId, node_provider, nodekey, computeUnits);
+
+        if (poolStates[poolId].providerActiveNodes[node_provider] == 0) {
+            poolStates[poolId].poolProviders.remove(node_provider);
+        }
+
+        emit ComputePoolNodeEjected(poolId, node_provider, nodekey);
+    }
+
     function _blacklistProvider(uint256 poolId, address provider) internal {
         // Add to blacklist set
         poolStates[poolId].blacklistedProviders[provider] = true;

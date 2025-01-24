@@ -246,6 +246,15 @@ contract PrimeNetworkTest is Test {
         computePool.blacklistNode(poolId, node);
     }
 
+    function ejectNodeFromPool(uint256 poolId, address node) public {
+        vm.startPrank(pool_creator);
+        computePool.ejectNode(poolId, node);
+    }
+
+    function isNodeInPool(uint256 poolId, address node) public view returns (bool) {
+        return computePool.isNodeInPool(poolId, node);
+    }
+
     function blacklistNodeListFromPool(uint256 poolId, address[] memory nodes) public {
         vm.startPrank(pool_creator);
         computePool.blacklistNodeList(poolId, nodes);
@@ -413,6 +422,20 @@ contract PrimeNetworkTest is Test {
 
         nodeJoin(domain, pool, provider_good1, node_good1);
         nodeJoin(domain, pool, provider_good1, node_good2);
+
+        // check eject works
+        ejectNodeFromPool(pool, node_good1);
+        assertEq(isNodeInPool(pool, node_good1), false);
+        // should revert as node is not in pool anymore
+        vm.expectRevert();
+        ejectNodeFromPool(pool, node_good1);
+        // should revert as node was never in pool
+        vm.expectRevert();
+        ejectNodeFromPool(pool, address(0x1));
+
+        // test that node can rejoin
+        nodeJoin(domain, pool, provider_good1, node_good1);
+        assertEq(isNodeInPool(pool, node_good1), true);
 
         // check blacklist prevents nodes from rejoining
         blacklistNodeFromPool(pool, node_good1);
