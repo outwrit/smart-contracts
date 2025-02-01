@@ -41,8 +41,11 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         _;
     }
 
-    modifier onlyPoolCreator(uint256 poolId) {
-        require(pools[poolId].creator == msg.sender, "ComputePool: only creator can perform this action");
+    modifier onlyPoolCreatorOrManager(uint256 poolId) {
+        require(
+            pools[poolId].creator == msg.sender || pools[poolId].computeManagerKey == msg.sender,
+            "ComputePool: only creator or manager can perform this action"
+        );
         _;
     }
 
