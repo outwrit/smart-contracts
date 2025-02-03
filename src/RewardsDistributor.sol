@@ -74,16 +74,10 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
             return; // no update if no time passed
         }
 
-        uint256 totalActiveComputeUnits = computePool.getComputePoolTotalCompute(poolId);
-
         uint256 timeDelta = currentTime - lastUpdateTime;
         // e.g. timeDelta * rewardRatePerSecond
         uint256 rewardToDistribute = timeDelta * rewardRatePerSecond;
-
-        if (totalActiveComputeUnits > 0) {
-            uint256 additionalIndex = rewardToDistribute / totalActiveComputeUnits;
-            globalRewardIndex += additionalIndex;
-        }
+        globalRewardIndex += rewardToDistribute;
 
         lastUpdateTime = currentTime;
     }
@@ -145,8 +139,6 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
     function calculateRewards(address node) external view returns (uint256) {
         NodeDataInternal memory nd = nodeInfoInternal[node];
         uint256 timeDelta;
-        uint256 totalActiveComputeUnits = computePool.getComputePoolTotalCompute(poolId);
-
         // If the node has never joined, or there are no active computeUnits in total, no extra rewards to calculate.
         if (!computePool.isNodeInPool(poolId, node) && nd.unclaimedRewards == 0) {
             return 0;
@@ -158,15 +150,10 @@ contract RewardsDistributor is IRewardsDistributor, AccessControlEnumerable {
         } else {
             timeDelta = block.timestamp - lastUpdateTime;
         }
-        uint256 rewardToDistribute = timeDelta * rewardRatePerSecond;
 
         // 2. Compute what the global reward index would be if we updated it this instant
         //    (without actually storing it).
-        uint256 hypotheticalGlobalIndex = globalRewardIndex;
-        if (totalActiveComputeUnits > 0) {
-            uint256 additionalIndex = rewardToDistribute / totalActiveComputeUnits;
-            hypotheticalGlobalIndex += additionalIndex;
-        }
+        uint256 hypotheticalGlobalIndex = globalRewardIndex + (rewardRatePerSecond * timeDelta);
 
         // 3. Start from node's stored unclaimedRewards
         uint256 pending = nd.unclaimedRewards;
