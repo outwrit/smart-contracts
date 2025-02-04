@@ -1,628 +1,471 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {Test, console} from "forge-std/Test.sol";
-import {PrimeNetwork} from "../src/PrimeNetwork.sol";
-import {AIToken} from "../src/AIToken.sol";
-import {ComputeRegistry} from "../src/ComputeRegistry.sol";
-import {ComputePool} from "../src/ComputePool.sol";
-import {StakeManager} from "../src/StakeManager.sol";
-import {DomainRegistry} from "../src/DomainRegistry.sol";
-import {IStakeManager} from "../src/interfaces/IStakeManager.sol";
-import {IDomainRegistry} from "../src/interfaces/IDomainRegistry.sol";
-import {IWorkValidation} from "../src/interfaces/IWorkValidation.sol";
-import {IRewardsDistributorFactory} from "../src/interfaces/IRewardsDistributorFactory.sol";
-import {RewardsDistributorFactory} from "../src/RewardsDistributorFactory.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import "forge-std/Test.sol";
+import "../src/RewardsDistributor.sol";
+import "../src/interfaces/IComputePool.sol";
+import "../src/interfaces/IComputeRegistry.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract PrimeNetworkTest is Test {
-    using ECDSA for bytes32;
-    using MessageHashUtils for bytes32;
+contract MockERC20 is ERC20 {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
-    address federator;
-    address validator;
-    address pool_creator;
-    address provider_good1;
-    address provider_good2;
-    address provider_good3;
-    address provider_bad1;
-    address node_good1;
-    uint256 node_good1_sk;
-    address node_good2;
-    uint256 node_good2_sk;
-    address node_good3;
-    uint256 node_good3_sk;
-    address node_bad1;
-    uint256 node_bad1_sk;
-    address computeManager;
-    uint256 computeManager_sk;
-    PrimeNetwork primeNetwork;
-    AIToken AI;
-    ComputeRegistry computeRegistry;
-    ComputePool computePool;
-    StakeManager stakeManager;
-    DomainRegistry domainRegistry;
-    IRewardsDistributorFactory rewardsDistributorFactory;
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+}
 
-    struct NodeGroup {
-        address provider;
-        uint256 provder_key;
-        address[] nodes;
-        uint256[] node_keys;
+contract MockComputePool {
+    bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
+    bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");
+    address public rewardToken;
+    RewardsDistributor public distributor;
+    MockComputeRegistry public computeRegistry;
+    mapping(address => bool) public nodes;
+    uint256 poolId;
+    uint256 totalCompute;
+
+    constructor(address _rewardToken, uint256 _poolId, MockComputeRegistry _computeRegistry) {
+        rewardToken = _rewardToken;
+        poolId = _poolId;
+        computeRegistry = _computeRegistry;
     }
 
-    uint256 unbondingPeriod = 60 * 60 * 24 * 7; // 1 week
+    function getRewardToken() external view returns (address) {
+        return rewardToken;
+    }
+
+    // add getRoleMember mock as it's used in RewardsDistributor constructor
+    function getRoleMember(bytes32 role, uint256 index) external view returns (address) {
+        if (role == PRIME_ROLE) {
+            return address(this);
+        }
+        if (role == FEDERATOR_ROLE) {
+            return address(this);
+        }
+        index == index;
+        return address(0);
+    }
+
+    function isNodeInPool(uint256 _poolId, address node) external view returns (bool) {
+        poolId == _poolId;
+        return nodes[node];
+    }
+
+    function joinComputePool(address node, uint256 cu) external {
+        if (nodes[node]) {
+            revert("Node already active");
+        }
+        nodes[node] = true;
+        computeRegistry.setNodeComputeUnits(node, cu);
+        distributor.joinPool(node);
+        totalCompute += cu;
+    }
+
+    function leaveComputePool(address node) external {
+        nodes[node] = false;
+        distributor.leavePool(node);
+        totalCompute -= computeRegistry.getNodeComputeUnits(node);
+    }
+
+    function setDistributorContract(RewardsDistributor _distributor) external {
+        distributor = _distributor;
+    }
+
+    function getComputePoolTotalCompute(uint256 _poolId) external view returns (uint256) {
+        _poolId == _poolId;
+        return totalCompute;
+    }
+
+    // Add any additional mock functions if needed for your tests
+}
+
+contract MockComputeRegistry {
+    // node => provider
+    mapping(address => address) public nodeProviderMap;
+    mapping(address => uint256) public nodeComputeUnits;
+
+    function setNodeProvider(address node, address provider) external {
+        nodeProviderMap[node] = provider;
+    }
+
+    function getNodeProvider(address node) external view returns (address) {
+        return nodeProviderMap[node];
+    }
+
+    function setNodeComputeUnits(address node, uint256 cu) external {
+        nodeComputeUnits[node] = cu;
+    }
+
+    function getNodeComputeUnits(address node) external view returns (uint256) {
+        return nodeComputeUnits[node];
+    }
+
+    // Add any additional mock functions if needed for your tests
+}
+
+contract RewardsDistributorTest is Test {
+    RewardsDistributor public distributor;
+    MockComputePool public mockComputePool;
+    MockComputeRegistry public mockComputeRegistry;
+    MockERC20 public mockRewardToken;
+
+    // Test addresses
+    address public manager = address(0x1); // Has REWARDS_MANAGER_ROLE
+    address public computePoolAddress = address(0x2); // Will hold COMPUTE_POOL_ROLE by default from constructor
+    address public nodeProvider = address(0x3);
+    address public node = address(0x4);
+
+    // Additional nodes/providers
+    address public node1 = address(0x5);
+    address public node2 = address(0x6);
+    address public nodeProvider1 = address(0x7);
+    address public nodeProvider2 = address(0x8);
 
     function setUp() public {
-        federator = makeAddr("federator");
-        validator = makeAddr("validator");
-        startHoax(federator);
-        AI = new AIToken("Prime Intellect", "AI");
-        primeNetwork = new PrimeNetwork(federator, validator, AI);
-        computeRegistry = new ComputeRegistry(address(primeNetwork));
-        stakeManager = new StakeManager(address(primeNetwork), unbondingPeriod, AI);
-        domainRegistry = new DomainRegistry(address(primeNetwork));
-        rewardsDistributorFactory = new RewardsDistributorFactory();
-        computePool =
-            new ComputePool(address(primeNetwork), domainRegistry, computeRegistry, rewardsDistributorFactory, AI);
-        rewardsDistributorFactory.setComputePool(computePool);
+        // 1. Deploy a mock token & mint an initial supply
+        mockRewardToken = new MockERC20("MockToken", "MTK");
+        mockRewardToken.mint(address(this), 1_000_000 ether); // Mint to ourselves for testing
 
-        primeNetwork.setModuleAddresses(
-            address(computeRegistry), address(domainRegistry), address(stakeManager), address(computePool)
+        // 2. Deploy mocks for IComputePool & IComputeRegistry
+        mockComputeRegistry = new MockComputeRegistry();
+        mockComputePool = new MockComputePool(address(mockRewardToken), 1, mockComputeRegistry);
+
+        // 3. Deploy the RewardsDistributor
+        distributor = new RewardsDistributor(
+            IComputePool(address(mockComputePool)),
+            IComputeRegistry(address(mockComputeRegistry)),
+            1 // poolId
         );
 
-        primeNetwork.setStakeMinimum(10);
+        // 4. By default, constructor grants COMPUTE_POOL_ROLE to the computePool
+        //    but we need to re-grant it to our mockComputePool if addresses differ
+        //    Because we used mockComputePool as the constructor arg, it's already set.
+        //    If you want a different address to be recognized as the compute pool, you can do:
+        // distributor.grantRole(distributor.COMPUTE_POOL_ROLE(), computePoolAddress);
 
-        pool_creator = makeAddr("pool_creator");
+        // 5. Give manager the REWARDS_MANAGER_ROLE
+        distributor.grantRole(distributor.REWARDS_MANAGER_ROLE(), manager);
 
-        provider_good1 = makeAddr("provider_good1");
-        provider_good2 = makeAddr("provider_good2");
-        provider_good3 = makeAddr("provider_good3");
-        provider_bad1 = makeAddr("provider_bad1");
+        // 6. Fund the distributor with the reward token so it can pay out
+        mockRewardToken.transfer(address(distributor), 500_000 ether);
 
-        (node_good1, node_good1_sk) = makeAddrAndKey("node_good1");
-        (node_good2, node_good2_sk) = makeAddrAndKey("node_good2");
-        (node_good3, node_good3_sk) = makeAddrAndKey("node_good3");
-        (node_bad1, node_bad1_sk) = makeAddrAndKey("node_bad1");
-        (computeManager, computeManager_sk) = makeAddrAndKey("computeManager");
+        // 7. Set up the node-provider relationship in the registry
+        mockComputeRegistry.setNodeProvider(node, nodeProvider);
+        mockComputeRegistry.setNodeProvider(node1, nodeProvider1);
+        mockComputeRegistry.setNodeProvider(node2, nodeProvider2);
 
-        AI.mint(provider_good1, 1000);
-        AI.mint(provider_good2, 1000);
-        AI.mint(provider_good3, 1000);
-        AI.mint(provider_bad1, 1000);
+        // 8. Set distribute contract in mockComputePool
+        mockComputePool.setDistributorContract(distributor);
     }
 
-    function fundProvider(address provider) public {
-        vm.startPrank(federator);
-        AI.mint(provider, 1000);
-    }
+    /// ---------------------------------------
+    /// Test: setRewardRate
+    /// ---------------------------------------
+    function testSetRewardRate() public {
+        // Check initial reward rate is 0
+        assertEq(distributor.rewardRatePerSecond(), 0);
 
-    function addProvider(address provider) public {
-        vm.startPrank(provider);
-        AI.approve(address(primeNetwork), 10);
-        primeNetwork.registerProvider(10);
-    }
-
-    function removeProvider(address provider) public {
-        vm.startPrank(provider);
-        primeNetwork.deregisterProvider(provider);
-    }
-
-    function addNode(address provider, address node, uint256 node_sk) public {
-        vm.startPrank(provider);
-        bytes32 digest = keccak256(abi.encodePacked(provider, node)).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(node_sk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        primeNetwork.addComputeNode(node, "ipfs://nodekey/", 10, signature);
-    }
-
-    function removeNode(address provider, address node) public {
-        vm.startPrank(provider);
-        primeNetwork.removeComputeNode(provider, node);
-    }
-
-    function whitelistProvider(address provider) public {
-        vm.startPrank(validator);
-        primeNetwork.whitelistProvider(provider);
-    }
-
-    function blacklistProvider(address provider) public {
-        vm.startPrank(validator);
-        primeNetwork.blacklistProvider(provider);
-    }
-
-    function validateNode(address provider, address node) public {
-        vm.startPrank(validator);
-        primeNetwork.validateNode(provider, node);
-    }
-
-    function invalidateNode(address provider, address node) public {
-        vm.startPrank(validator);
-        primeNetwork.invalidateNode(provider, node);
-    }
-
-    function withdrawStake(address provider) public {
-        vm.startPrank(provider);
-        stakeManager.withdraw();
-    }
-
-    function slashProvider(address provider, uint256 amount) public {
-        vm.startPrank(validator);
-        primeNetwork.slash(provider, amount, "test");
-    }
-
-    function newDomain(string memory name, string memory uri) public returns (uint256) {
-        vm.startPrank(federator);
-        return primeNetwork.createDomain(name, IWorkValidation(address(0)), uri);
-    }
-
-    function newPool(uint256 domainId, string memory name, string memory uri) public returns (uint256) {
-        vm.startPrank(pool_creator);
-        return computePool.createComputePool(domainId, computeManager, name, uri, 0);
-    }
-
-    function startPool(uint256 poolId) public {
-        vm.startPrank(pool_creator);
-        computePool.startComputePool(poolId);
-    }
-
-    function nodeJoin(uint256 domainId, uint256 poolId, address provider, address node) public {
-        bytes32 digest = keccak256(abi.encodePacked(domainId, poolId, node)).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(computeManager_sk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        vm.startPrank(provider);
-        address[] memory nodes = new address[](1);
-        bytes[] memory signatures = new bytes[](1);
-        nodes[0] = node;
-        signatures[0] = signature;
-        computePool.joinComputePool(poolId, provider, nodes, signatures);
-    }
-
-    function nodeJoinMultiple(uint256 domainId, uint256 poolId, address provider, address[] memory nodes) public {
-        bytes[] memory signatures = new bytes[](nodes.length);
-        for (uint256 i = 0; i < nodes.length; i++) {
-            bytes32 digest = keccak256(abi.encodePacked(domainId, poolId, nodes[i])).toEthSignedMessageHash();
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(computeManager_sk, digest);
-            bytes memory signature = abi.encodePacked(r, s, v);
-            signatures[i] = signature;
-        }
-        string memory msgString = string(
-            abi.encodePacked(
-                "add (",
-                vm.toString(nodes.length),
-                ") nodes to pool (",
-                vm.toString(poolId),
-                ") for provider (",
-                vm.toString(provider),
-                ") using multi join - gas:"
-            )
-        );
-        vm.startPrank(provider);
-        computePool.joinComputePool(poolId, provider, nodes, signatures);
-        uint256 gasUsed = vm.snapshotGasLastCall(msgString);
-        console.log(msgString, gasUsed);
-    }
-
-    function nodeLeave(uint256 poolId, address provider, address node) public {
-        vm.startPrank(provider);
-        computePool.leaveComputePool(poolId, provider, node);
-    }
-
-    function nodeLeaveAll(uint256 poolId, address provider) public {
-        vm.startPrank(provider);
-        computePool.leaveComputePool(poolId, provider, address(0));
-    }
-
-    function blacklistProviderFromPool(uint256 poolId, address provider) public {
-        vm.startPrank(pool_creator);
-        computePool.blacklistProvider(poolId, provider);
-    }
-
-    function blacklistAndPurgeProviderFromPool(uint256 poolId, address provider) public {
-        // get node list length
-        uint256 nodes_of_provider = computeRegistry.getProvider(provider).nodes.length;
-        // get nodes in pool from provider
-        uint256 nodes_in_pool = computePool.getProviderActiveNodesInPool(poolId, provider);
-        vm.startPrank(pool_creator);
-        computePool.blacklistAndPurgeProvider(poolId, provider);
-        uint256 gasUsed = vm.snapshotGasLastCall("blacklist and purge provider from pool");
-        string memory msgString = string(
-            abi.encodePacked(
-                "blacklist and purge provider from pool",
-                " - nodes_in_pool_from_provider:",
-                vm.toString(nodes_in_pool),
-                " - total_nodes_owner_by_provider:",
-                vm.toString(nodes_of_provider),
-                " - gas:",
-                vm.toString(gasUsed)
-            )
-        );
-        console.log(msgString);
-    }
-
-    function blacklistNodeFromPool(uint256 poolId, address node) public {
-        vm.startPrank(pool_creator);
-        computePool.blacklistNode(poolId, node);
-    }
-
-    function ejectNodeFromPool(uint256 poolId, address node) public {
-        vm.startPrank(pool_creator);
-        computePool.ejectNode(poolId, node);
-    }
-
-    function isNodeInPool(uint256 poolId, address node) public view returns (bool) {
-        return computePool.isNodeInPool(poolId, node);
-    }
-
-    function blacklistNodeListFromPool(uint256 poolId, address[] memory nodes) public {
-        vm.startPrank(pool_creator);
-        computePool.blacklistNodeList(poolId, nodes);
-        uint256 gasUsed = vm.snapshotGasLastCall("blacklist node list from pool");
-        string memory msgString = string(
-            abi.encodePacked(
-                "blacklist node list from pool",
-                " - nodes_in_pool:",
-                vm.toString(computePool.getComputePoolNodes(poolId).length),
-                " - nodes_in_list:",
-                vm.toString(nodes.length),
-                " - gas:",
-                vm.toString(gasUsed)
-            )
-        );
-        console.log(msgString);
-    }
-
-    function test_federatorRole() public {
-        vm.startPrank(address(0));
+        // Non-manager tries to set - should revert
+        vm.prank(node);
         vm.expectRevert();
-        primeNetwork.setFederator(federator);
+        distributor.setRewardRate(10);
+
+        // Manager sets reward rate
+        vm.prank(manager);
+        distributor.setRewardRate(10);
+        assertEq(distributor.rewardRatePerSecond(), 10);
     }
 
-    function test_validatorRole() public {
-        vm.startPrank(address(0));
-        vm.expectRevert();
-        primeNetwork.setValidator(validator);
+    /// ---------------------------------------
+    /// Test: joinPool
+    /// ---------------------------------------
+    function testJoinPool() public {
+        // Node not active initially
+        (uint256 cu,,, bool isActive) = distributor.nodeInfo(node);
+        assertEq(cu, 0);
+        assertFalse(isActive);
+
+        // Have the compute pool (with role) call joinPool
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node, 10);
+
+        // Now node is active
+        (cu,,, isActive) = distributor.nodeInfo(node);
+        assertEq(cu, 10);
+        assertTrue(isActive);
+
+        // Trying to join again should revert since isActive is true
+        vm.expectRevert("Node already active");
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node, 10);
     }
 
-    function test_providerRegistration() public {
-        vm.startPrank(provider_good1);
-        AI.approve(address(primeNetwork), 10);
-        primeNetwork.registerProvider(10);
-        (address providerAddress,,) = computeRegistry.providers(provider_good1);
-        assertEq(providerAddress, provider_good1);
+    /// ---------------------------------------
+    /// Test: leavePool
+    /// ---------------------------------------
+    function testLeavePool() public {
+        // Must join first
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node, 10);
+
+        // Node is active
+        (,,, bool isActive) = distributor.nodeInfo(node);
+        assertTrue(isActive);
+
+        // set reward rate
+        vm.prank(manager);
+        distributor.setRewardRate(1 ether);
+
+        // Warp some time so there's a reward accrual
+        vm.warp(block.timestamp + 100);
+
+        // Now leave
+        vm.prank(address(mockComputePool));
+        mockComputePool.leaveComputePool(node);
+
+        // Node is no longer active
+        (,,, isActive) = distributor.nodeInfo(node);
+        assertFalse(isActive);
+
+        // Check that calculateRewards shows the same
+        uint256 calculatedRewards = distributor.calculateRewards(node);
+
+        // The unclaimedRewards should have accrued
+        (,, uint256 unclaimedRewards,) = distributor.nodeInfo(node);
+        assertEq(unclaimedRewards, calculatedRewards);
+        assertGt(unclaimedRewards, 999);
     }
 
-    function test_providerDeregistrationAndUnstaking() public {
-        vm.startPrank(provider_good1);
-        assertEq(AI.balanceOf(provider_good1), 1000);
-        AI.approve(address(primeNetwork), 10);
-        primeNetwork.registerProvider(10);
-        primeNetwork.deregisterProvider(provider_good1);
-        (address providerAddress,,) = computeRegistry.providers(provider_good1);
-        assertEq(providerAddress, address(0));
-        // try to withdraw before unbonding period
-        vm.expectRevert();
-        stakeManager.withdraw();
-        skip(block.timestamp + unbondingPeriod + 1);
-        IStakeManager.Unbond[] memory bond = stakeManager.getPendingUnbonds(provider_good1);
-        console.log("Unbond:", bond[0].amount, bond[0].timestamp);
-        stakeManager.withdraw();
-        assertEq(AI.balanceOf(provider_good1), 1000);
+    /// ---------------------------------------
+    /// Test: claimRewards
+    /// ---------------------------------------
+    function testClaimRewards() public {
+        // 1. Manager sets nonzero reward rate
+        vm.prank(manager);
+        distributor.setRewardRate(1 ether); // 1 token/sec for easy math
+
+        // 2. Node joins
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node, 10);
+
+        // 3. Move forward in time
+        vm.warp(block.timestamp + 10);
+
+        // 4. Claim from the wrong address => revert
+        vm.expectRevert("Unauthorized");
+        distributor.claimRewards(node);
+
+        // 5. Node's provider claims on behalf of that node
+        uint256 calculatedRewards = distributor.calculateRewards(node);
+        vm.prank(nodeProvider);
+        distributor.claimRewards(node);
+
+        // Check node unclaimedRewards is zero
+        (,, uint256 unclaimed,) = distributor.nodeInfo(node);
+        assertEq(unclaimed, 0);
+
+        // Check the node's token balance is correct
+        uint256 nodeBalance = mockRewardToken.balanceOf(node);
+        // Rewards per second = 1 token; 10 seconds => 10 tokens
+        // but node has 10 computeUnits => total 1 * 10 * 10?
+        // Actually, the contract logic distributes 1 token/sec / totalActiveComputeUnits
+        // => 1 / 10 = 0.1 tokens/sec per compute unit
+        // => in 10 secs = 10 * 0.1 = 1 token per compute unit
+        // => node has 10 compute units => 10 * 1 = 10 tokens total
+        // Because we are using integer division in _updateGlobalIndex,
+        // and if rewardRate / totalUnits is performed as integer division,
+        // you might see truncated results. (But let's assume 1 for simplicity or
+        // or your contract might do more precise math if using decimals.)
+        //
+        // For demonstration, let's just check we got > 0
+        assertEq(nodeBalance, 10 ether);
+        assertEq(nodeBalance, calculatedRewards);
     }
 
-    function test_domainCreation() public {
-        vm.startPrank(federator);
-        primeNetwork.createDomain("test", IWorkValidation(address(0)), "test");
-        IDomainRegistry.Domain memory domain = domainRegistry.get(0);
-        assertEq(domain.domainId, 0);
-        assertEq(domain.name, "test");
+    /// ---------------------------------------
+    /// Test: endRewards
+    /// ---------------------------------------
+    function testEndRewards() public {
+        // Node joins first
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node, 10);
+
+        // Set a nonzero reward rate
+        vm.prank(manager);
+        distributor.setRewardRate(1 ether);
+
+        // Warp 5 seconds
+        vm.warp(block.timestamp + 5);
+
+        // End rewards
+        vm.prank(address(mockComputePool));
+        distributor.endRewards();
+
+        // Warp more time (should not accrue new rewards after end)
+        vm.warp(block.timestamp + 100);
+
+        // Claim
+        uint256 calculatedRewards = distributor.calculateRewards(node);
+        vm.prank(nodeProvider);
+        distributor.claimRewards(node);
+
+        // The node's balance should reflect only the reward for the first 5 seconds
+        uint256 nodeBalance = mockRewardToken.balanceOf(node);
+        // 1 token/sec total / 10 computeUnits => 0.1 token/sec per unit * 10 units = 1 token/sec total
+        // => 5 seconds => 5 tokens
+        assertEq(nodeBalance, 5 ether);
+        assertEq(nodeBalance, calculatedRewards);
     }
 
-    function test_providerOps() public {
-        addProvider(provider_good1);
-        assertEq(computeRegistry.getProvider(provider_good1).providerAddress, provider_good1);
-        addProvider(provider_good2);
-        assertEq(computeRegistry.getProvider(provider_good2).providerAddress, provider_good2);
-        addProvider(provider_good3);
-        assertEq(computeRegistry.getProvider(provider_good3).providerAddress, provider_good3);
-        addProvider(provider_bad1);
-        assertEq(computeRegistry.getProvider(provider_bad1).providerAddress, provider_bad1);
-        // whitelist good providers
-        whitelistProvider(provider_good1);
-        assertEq(computeRegistry.getProvider(provider_good1).isWhitelisted, true);
-        whitelistProvider(provider_good2);
-        assertEq(computeRegistry.getProvider(provider_good2).isWhitelisted, true);
-        whitelistProvider(provider_good3);
-        assertEq(computeRegistry.getProvider(provider_good3).isWhitelisted, true);
-        assertEq(computeRegistry.getProvider(provider_bad1).isWhitelisted, false);
+    /// ---------------------------------------
+    /// TEST: Multiple Nodes
+    /// ---------------------------------------
+    ///
+    /// Node1 joins at t=0, Node2 joins at t=15
+    /// We'll set rewardRate=10 tokens/sec to illustrate
+    function testMultipleNodes() public {
+        // 1. Manager sets reward rate = 10 tokens/sec
+        vm.prank(manager);
+        distributor.setRewardRate(10 ether);
 
-        // slash prior to unstaking
-        slashProvider(provider_bad1, 5);
+        // 2. Node1 joins at t=0 with 10 computeUnits
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node1, 10);
 
-        removeProvider(provider_bad1);
-        assertEq(computeRegistry.getProvider(provider_bad1).providerAddress, address(0));
-        removeProvider(provider_good1);
-        assertEq(computeRegistry.getProvider(provider_good1).providerAddress, address(0));
-        removeProvider(provider_good2);
-        assertEq(computeRegistry.getProvider(provider_good2).providerAddress, address(0));
-        removeProvider(provider_good3);
-        assertEq(computeRegistry.getProvider(provider_good3).providerAddress, address(0));
+        // Warp 15s => now t=15
+        skip(15);
 
-        IStakeManager.Unbond[] memory unbonds = stakeManager.getPendingUnbonds(provider_bad1);
-        assertEq(unbonds[0].amount, 5);
+        // 3. Node2 joins at t=15, with 10 computeUnits as well
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node2, 10);
 
-        // slash post unstaking, but pre unbonding period expiry
-        slashProvider(provider_bad1, 2);
-        unbonds = stakeManager.getPendingUnbonds(provider_bad1);
-        assertEq(unbonds[0].amount, 3);
+        // Warp another 15s => now t=30
+        skip(15);
+        // 4. Let both nodes claim
+        //    We'll do it from their providers
+        uint256 node1Pending = distributor.calculateRewards(node1);
+        vm.startPrank(nodeProvider1);
+        distributor.claimRewards(node1);
+        vm.stopPrank();
 
-        // skip to unbond time
-        skip(unbondingPeriod + 10);
-        // check stake withdrawal
-        withdrawStake(provider_good1);
-        assertEq(AI.balanceOf(provider_good1), 1000);
-        withdrawStake(provider_good2);
-        assertEq(AI.balanceOf(provider_good2), 1000);
-        withdrawStake(provider_good3);
-        assertEq(AI.balanceOf(provider_good3), 1000);
-        withdrawStake(provider_bad1);
-        assertEq(AI.balanceOf(provider_bad1), 993);
-        assertEq(AI.balanceOf(validator), 7);
+        uint256 node2Pending = distributor.calculateRewards(node2);
+        vm.startPrank(nodeProvider2);
+        distributor.claimRewards(node2);
+        vm.stopPrank();
+
+        // 5. Check balances
+        uint256 node1Balance = mockRewardToken.balanceOf(node1);
+        uint256 node2Balance = mockRewardToken.balanceOf(node2);
+
+        assertEq(node1Pending, node1Balance, "Node1 pending balance mismatch");
+        assertEq(node2Pending, node2Balance, "Node2 pending balance mismatch");
+
+        // Explanation of the math (given integer division in the contract):
+        //
+        // For the first 15s (t=0 to t=15), only Node1 is in the pool with 10 CU.
+        //   rewardRate = 10 tokens/sec => total = 10 * 15 = 150 tokens
+        //   totalActiveComputeUnits = 10 => additionalIndex = 150 / 10 = 15
+        //   => Node1’s unclaimed = 15 * 10 = 150 (no leftover in that step).
+        //
+        // Then Node2 joins at t=15, so totalActiveComputeUnits=20.
+        // Next 15s (t=15 to t=30):
+        //   rewardRate = 10 tokens/sec => total = 10 * 15 = 150 tokens
+        //   totalActiveComputeUnits = 20 => additionalIndex = 150 / 20 = 7.5
+        //   => each unit gets 7.5 more tokens
+        //      => Node1 has 10 CU => +75
+        //      => Node2 has 10 CU => +75
+        //
+        // So, final unclaimed before claiming:
+        //   Node1: 150 + 75 = 225
+        //   Node2: 0 + 75 = 75
+        //
+        // After claim, that’s the token balances:
+        assertEq(node1Balance, 225 ether, "Node1 balance mismatch");
+        assertEq(node2Balance, 75 ether, "Node2 balance mismatch");
     }
 
-    function test_nodeOps() public {
-        addProvider(provider_good1);
+    /// ---------------------------------------
+    /// TEST: Multiple Reward Rates
+    /// ---------------------------------------
+    ///
+    /// 1) Node1 joins with 10 CU under rate=50 tokens/sec
+    /// 2) Warp 10s
+    /// 3) Manager updates reward rate to 100 tokens/sec
+    /// 4) Warp 10s more
+    /// 5) Node2 joins with 5 CU
+    /// 6) Warp 10s more
+    /// 7) Claim for both => see correct distribution
+    function testMultipleRewardRates() public {
+        // Step 1: set initial rate = 50 tokens/sec
+        vm.prank(manager);
+        distributor.setRewardRate(50 ether);
 
-        addNode(provider_good1, node_good1, node_good1_sk);
-        addNode(provider_good1, node_good2, node_good2_sk);
-        addNode(provider_good1, node_good3, node_good3_sk);
-        addNode(provider_good1, node_bad1, node_bad1_sk);
+        // Node1 joins with 10 computeUnits
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node1, 10);
 
-        whitelistProvider(provider_good1);
-        validateNode(provider_good1, node_good1);
-        validateNode(provider_good1, node_good2);
-        validateNode(provider_good1, node_good3);
-        validateNode(provider_good1, node_bad1);
+        // Warp 10s => Node1 accumulates at 50 tokens/sec
+        skip(10);
 
-        assertEq(computeRegistry.getNode(provider_good1, node_good1).subkey, node_good1);
-        assertEq(computeRegistry.getNode(provider_good1, node_good2).subkey, node_good2);
-        assertEq(computeRegistry.getNode(provider_good1, node_good3).subkey, node_good3);
-        assertEq(computeRegistry.getNode(provider_good1, node_bad1).subkey, node_bad1);
+        // Step 3: Manager updates reward rate to 100 tokens/sec
+        vm.prank(manager);
+        distributor.setRewardRate(100 ether);
 
-        invalidateNode(provider_good1, node_bad1);
-        assertEq(computeRegistry.getNode(provider_good1, node_bad1).isValidated, false);
+        // Warp 10s more => Node1 gets 100 tokens/sec for those 10s
+        skip(10);
 
-        uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
-        uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
+        // Step 5: Node2 joins with 5 computeUnits
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node2, 5);
 
-        startPool(pool);
+        // Warp 10s more => Now Node1(10 CU) & Node2(5 CU) share 100 tokens/sec
+        skip(10);
 
-        nodeJoin(domain, pool, provider_good1, node_good1);
-        address[] memory nodes = new address[](2);
-        nodes[0] = node_good2;
-        nodes[1] = node_good3;
+        // Step 7: Claim for both from their respective providers
+        uint256 node1Pending = distributor.calculateRewards(node1);
+        vm.startPrank(nodeProvider1);
+        distributor.claimRewards(node1);
+        vm.stopPrank();
 
-        nodeJoinMultiple(domain, pool, provider_good1, nodes);
+        uint256 node2Pending = distributor.calculateRewards(node2);
+        vm.startPrank(nodeProvider2);
+        distributor.claimRewards(node2);
+        vm.stopPrank();
 
-        vm.expectRevert();
-        nodeJoin(domain, pool, provider_good1, node_bad1);
+        uint256 node1Bal = mockRewardToken.balanceOf(node1);
+        uint256 node2Bal = mockRewardToken.balanceOf(node2);
 
-        // should revert since node is already in another pool
-        vm.expectRevert();
-        nodeJoin(domain, pool, provider_good1, node_good1);
+        assertEq(node1Pending, node1Bal, "Node1 pending balance mismatch");
+        assertEq(node2Pending, node2Bal, "Node2 pending balance mismatch");
 
-        nodeLeave(pool, provider_good1, node_good1);
-
-        // should revert because provider still has active nodes
-        vm.expectRevert();
-        removeProvider(provider_good1);
-
-        nodeLeaveAll(pool, provider_good1);
-
-        nodeJoin(domain, pool, provider_good1, node_good1);
-        nodeJoin(domain, pool, provider_good1, node_good2);
-
-        // check eject works
-        ejectNodeFromPool(pool, node_good1);
-        assertEq(isNodeInPool(pool, node_good1), false);
-        // should revert as node is not in pool anymore
-        vm.expectRevert();
-        ejectNodeFromPool(pool, node_good1);
-        // should revert as node was never in pool
-        vm.expectRevert();
-        ejectNodeFromPool(pool, address(0x1));
-
-        // test that node can rejoin
-        nodeJoin(domain, pool, provider_good1, node_good1);
-        assertEq(isNodeInPool(pool, node_good1), true);
-
-        // check blacklist prevents nodes from rejoining
-        blacklistNodeFromPool(pool, node_good1);
-        vm.expectRevert();
-        nodeJoin(domain, pool, provider_good1, node_good1);
-
-        // check that provider level blacklist also works
-        blacklistAndPurgeProviderFromPool(pool, provider_good1);
-        vm.expectRevert();
-        nodeJoin(domain, pool, provider_good1, node_good2);
-
-        // should succeed now that all nodes are removed (forcibly or voluntarily)
-        removeProvider(provider_good1);
-
-        skip(stakeManager.getUnbondingPeriod() + 10);
-
-        withdrawStake(provider_good1);
-        assertEq(AI.balanceOf(provider_good1), 1000);
-    }
-
-    function test_noNodeOwnedByMultipleProviders() public {
-        addProvider(provider_good1);
-        addProvider(provider_good2);
-
-        addNode(provider_good1, node_good1, node_good1_sk);
-        // should revert as node is already owned by provider_good1
-        vm.expectRevert();
-        addNode(provider_good2, node_good1, node_good1_sk);
-    }
-
-    function test_registerWithPermit() public {
-        address provider_permit;
-        uint256 provider_permit_sk;
-        (provider_permit, provider_permit_sk) = makeAddrAndKey("provider_permit");
-        bytes32 DOMAIN_SEPARATOR;
-        bytes32 PERMIT_TYPEHASH =
-            keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-        DOMAIN_SEPARATOR = AI.DOMAIN_SEPARATOR();
-
-        vm.startPrank(federator);
-        AI.mint(provider_permit, 100);
-        vm.startPrank(provider_permit);
-        address owner = provider_permit;
-        address spender = address(primeNetwork);
-        uint256 value = 10;
-        uint256 deadline = block.timestamp + 1000;
-        uint256 nonce = AI.nonces(provider_good1);
-        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonce, deadline));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash));
-
-        // Sign the digest
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(provider_permit_sk, digest);
-        bytes memory signature = abi.encode(r, s, v);
-        primeNetwork.registerProviderWithPermit(value, deadline, signature);
-    }
-
-    function test_blacklistGasCosts() public {
-        string memory node_prefix = "node_gastest";
-        string memory provider_prefix = "provider_gastest";
-
-        uint256 num_providers = 10;
-        uint256 num_nodes_per_provider = 20;
-        uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
-        uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
-        uint256 blacklist_provider = 4;
-        startPool(pool);
-
-        NodeGroup[] memory ng = new NodeGroup[](num_providers);
-
-        for (uint256 i = 0; i < num_providers; i++) {
-            string memory provider = string(abi.encodePacked(provider_prefix, vm.toString(i + 1)));
-            (address pa, uint256 pk) = makeAddrAndKey(provider);
-            fundProvider(pa);
-            addProvider(pa);
-            whitelistProvider(pa);
-            ng[i].provider = pa;
-            ng[i].provder_key = pk;
-            ng[i].nodes = new address[](num_nodes_per_provider);
-            ng[i].node_keys = new uint256[](num_nodes_per_provider);
-            for (uint256 j = 0; j < num_nodes_per_provider; j++) {
-                string memory node = string(abi.encodePacked(node_prefix, vm.toString(i + 1), "_", vm.toString(j + 1)));
-                (address na, uint256 nk) = makeAddrAndKey(node);
-                ng[i].nodes[j] = na;
-                ng[i].node_keys[j] = nk;
-                addNode(pa, na, nk);
-                validateNode(pa, na);
-                // nodeJoin(domain, pool, pa, na);
-                // confirm node registration
-                ComputeRegistry.ComputeNode memory nx = computeRegistry.getNode(pa, na);
-                assertEq(nx.provider, pa);
-                assertEq(nx.subkey, na);
-            }
-            nodeJoinMultiple(domain, pool, ng[i].provider, ng[i].nodes);
-            // check that the number of nodes that joined for the provider matches expectation
-            assertEq(computeRegistry.getProvider(pa).activeNodes, num_nodes_per_provider);
-        }
-
-        blacklistAndPurgeProviderFromPool(pool, ng[blacklist_provider].provider);
-
-        // get list of nodes from pool to check no provider blacklisted nodes are left
-        address[] memory poolNodes = computePool.getComputePoolNodes(pool);
-        for (uint256 i = 0; i < poolNodes.length; i++) {
-            address node_provider = computeRegistry.getNodeProvider(poolNodes[i]);
-            assertNotEq(node_provider, ng[blacklist_provider].provider);
-        }
-
-        uint256 span = 2;
-        uint256 idx = 0;
-        address[] memory nodes = new address[](num_nodes_per_provider * span + 1);
-        // make up a node to test that the function handles it correctly
-        nodes[nodes.length - 1] = makeAddr("nonexisting");
-
-        for (uint256 i = 0; i < span; i++) {
-            for (uint256 j = 0; j < num_nodes_per_provider; j++) {
-                nodes[idx] = ng[i].nodes[j];
-                idx++;
-            }
-        }
-
-        blacklistNodeListFromPool(pool, nodes);
-
-        // ensure nodes from span are also gone
-        for (uint256 i = 0; i < nodes.length; i++) {
-            bool found = computePool.isNodeInPool(pool, nodes[i]);
-            assertEq(found, false);
-        }
-
-        // ensure all span providers are now not in pool anymore
-        for (uint256 i = 0; i < span; i++) {
-            bool found = computePool.isProviderInPool(pool, ng[i].provider);
-            assertEq(found, false);
-        }
-        assertEq(computePool.isProviderInPool(pool, ng[blacklist_provider].provider), false);
-    }
-
-    function test_computePoolFlow() public {
-        // start federator role ----
-        vm.startPrank(federator);
-        // create domain
-        primeNetwork.createDomain(
-            "Decentralized Training", IWorkValidation(address(0)), "https://primeintellect.ai/training/params"
-        );
-        IDomainRegistry.Domain memory domain = domainRegistry.get(0);
-        assertEq(domain.name, "Decentralized Training");
-        uint256 domainId = domain.domainId;
-        // mint some tokens so provider can stake
-        AI.mint(address(provider_good1), 10);
-        // end federator role ------
-        // start provider role -----
-        vm.startPrank(provider_good1);
-        // register provider
-        AI.approve(address(primeNetwork), 10);
-        primeNetwork.registerProvider(10);
-        // create a signature from node and add node
-        bytes32 digest = keccak256(abi.encodePacked(provider_good1, node_good1)).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(node_good1_sk, digest);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        primeNetwork.addComputeNode(node_good1, "ipfs://nodekey/", 10, signature);
-        assertEq(computeRegistry.getNode(provider_good1, node_good1).subkey, node_good1);
-        // end provider role -------
-        // start validator role-----
-        vm.startPrank(validator);
-        // whitelist provider
-        primeNetwork.whitelistProvider(provider_good1);
-        // validate node
-        primeNetwork.validateNode(provider_good1, node_good1);
-        // end validator role ------
-        // start pool creator role
-        vm.startPrank(pool_creator);
-        // create compute pool
-        uint256 poolId = computePool.createComputePool(
-            domainId, computeManager, "INTELLECT-2", "https://primeintellect.ai/pools/intellect-2", 0
-        );
-        computePool.startComputePool(poolId);
-        // invite node to join pool
-        bytes32 digest_invite = keccak256(abi.encodePacked(domainId, poolId, node_good1)).toEthSignedMessageHash();
-        (uint8 v_invite, bytes32 r_invite, bytes32 s_invite) = vm.sign(computeManager_sk, digest_invite);
-        bytes memory signature_invite = abi.encodePacked(r_invite, s_invite, v_invite);
-        // end pool creator role
-        // start provider role -----
-        vm.startPrank(provider_good1);
-        // join pool
-        address[] memory nodes = new address[](1);
-        nodes[0] = node_good1;
-        bytes[] memory signatures = new bytes[](1);
-        signatures[0] = signature_invite;
-        computePool.joinComputePool(poolId, provider_good1, nodes, signatures);
+        // Let’s break down the rewards in each time segment:
+        //
+        // Segment A (t=0 -> t=10):
+        //   rate = 50 tokens/sec, Node1 only with 10 CU
+        //   => total = 50 * 10 = 500 tokens
+        //   => totalActiveComputeUnits = 10 => additionalIndex = 500 / 10 = 50
+        //   => Node1 accumulates 50 * 10 = 500
+        //
+        // Segment B (t=10 -> t=20):
+        //   rate = 100 tokens/sec, Node1 only with 10 CU
+        //   => total = 100 * 10 = 1000 tokens
+        //   => totalActiveComputeUnits = 10 => additionalIndex = 1000 / 10 = 100
+        //   => Node1 accumulates + (100 * 10) = 1000
+        //   => So Node1 total so far = 500 + 1000 = 1500
+        //
+        // Segment C (t=20 -> t=30):
+        //   rate = 100 tokens/sec, Node1(10 CU) + Node2(5 CU) => total = 15 CU
+        //   => total = 100 * 10 = 1000 tokens
+        //   => additionalIndex = 1000 / 15 = 66.666...
+        //   => Node1 gets 66.666... * 10 = 666.666...
+        //   => Node2 gets 66.666... * 5  = 333.333...
+        //
+        // Final expected:
+        //   Node1: 1500 + 666.666... = 2166.666...
+        //   Node2: 0 + 333.333...    = 333.333...
+        //
+        assertEq(node1Bal, 2166.66666666666666666 ether, "Node1 final balance mismatch");
+        assertEq(node2Bal, 333.33333333333333333 ether, "Node2 final balance mismatch");
     }
 }
