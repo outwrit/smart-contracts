@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./interfaces/IComputePool.sol";
 import "./interfaces/IDomainRegistry.sol";
 import "./interfaces/IRewardsDistributor.sol";
-import "./RewardsDistributorFactory.sol";
+import "./interfaces/IRewardsDistributorFactory.sol";
 import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -30,7 +30,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     uint256 public poolIdCounter;
     IComputeRegistry public computeRegistry;
     IDomainRegistry public domainRegistry;
-    RewardsDistributorFactory public rewardsDistributorFactory;
+    IRewardsDistributorFactory public rewardsDistributorFactory;
     IERC20 public AIToken;
 
     mapping(uint256 => PoolState) private poolStates;
@@ -63,7 +63,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         address _primeAdmin,
         IDomainRegistry _domainRegistry,
         IComputeRegistry _computeRegistry,
-        RewardsDistributorFactory _rewardsDistributorFactory,
+        IRewardsDistributorFactory _rewardsDistributorFactory,
         IERC20 _AIToken
     ) {
         _grantRole(DEFAULT_ADMIN_ROLE, _primeAdmin);

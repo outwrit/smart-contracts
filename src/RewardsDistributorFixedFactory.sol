@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./RewardsDistributor.sol";
+import "./RewardsDistributorFixed.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IRewardsDistributorFactory.sol";
 
-contract RewardsDistributorFactory is AccessControl, IRewardsDistributorFactory {
+contract RewardsDistributorFixedFactory is AccessControl, IRewardsDistributorFactory {
     bytes32 public constant REWARD_CREATOR = keccak256("REWARD_CREATOR");
     IComputePool computePool;
 
@@ -24,6 +24,6 @@ contract RewardsDistributorFactory is AccessControl, IRewardsDistributorFactory 
         onlyRole(REWARD_CREATOR)
         returns (IRewardsDistributor)
     {
-        return new RewardsDistributor(computePool, _computeRegistry, _poolId);
+        return new RewardsDistributorFixed(computePool, _computeRegistry, _poolId);
     }
 }

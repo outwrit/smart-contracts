@@ -11,6 +11,7 @@ import {DomainRegistry} from "../src/DomainRegistry.sol";
 import {IStakeManager} from "../src/interfaces/IStakeManager.sol";
 import {IDomainRegistry} from "../src/interfaces/IDomainRegistry.sol";
 import {IWorkValidation} from "../src/interfaces/IWorkValidation.sol";
+import {IRewardsDistributorFactory} from "../src/interfaces/IRewardsDistributorFactory.sol";
 import {RewardsDistributorFactory} from "../src/RewardsDistributorFactory.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
@@ -43,7 +44,7 @@ contract PrimeNetworkTest is Test {
     ComputePool computePool;
     StakeManager stakeManager;
     DomainRegistry domainRegistry;
-    RewardsDistributorFactory rewardsDistributorFactory;
+    IRewardsDistributorFactory rewardsDistributorFactory;
 
     struct NodeGroup {
         address provider;
