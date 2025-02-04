@@ -133,6 +133,7 @@ contract PrimeNetwork is AccessControlEnumerable {
         address provider = msg.sender;
         // check provider exists
         require(computeRegistry.checkProviderExists(provider), "Provider not registered");
+        require(computeRegistry.getWhitelistStatus(provider), "Provider not whitelisted");
         require(_verifyNodekeySignature(provider, nodekey, signature), "Invalid signature");
         computeRegistry.addComputeNode(provider, nodekey, computeUnits, specsURI);
         emit ComputeNodeAdded(provider, nodekey, specsURI);

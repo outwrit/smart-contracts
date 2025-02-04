@@ -25,6 +25,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     }
 
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
+    bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");
 
     mapping(uint256 => PoolInfo) public pools;
     uint256 public poolIdCounter;
@@ -73,6 +74,8 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         computeRegistry = _computeRegistry;
         domainRegistry = _domainRegistry;
         rewardsDistributorFactory = _rewardsDistributorFactory;
+        address federator = IAccessControlEnumerable(address(_primeAdmin)).getRoleMember(FEDERATOR_ROLE, 0);
+        _grantRole(FEDERATOR_ROLE, federator);
     }
 
     function _verifyPoolInvite(
@@ -118,7 +121,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         string calldata poolName,
         string calldata poolDataURI,
         uint256 computeLimit
-    ) external returns (uint256) {
+    ) external onlyRole(FEDERATOR_ROLE) returns (uint256) {
         require(domainRegistry.get(domainId).domainId == domainId, "ComputePool: domain does not exist");
 
         pools[poolIdCounter] = PoolInfo({

@@ -75,7 +75,9 @@ contract PrimeNetworkTest is Test {
 
         primeNetwork.setStakeMinimum(10);
 
-        pool_creator = makeAddr("pool_creator");
+        // pool_creator = makeAddr("pool_creator");
+        // set it as federator for testnet
+        pool_creator = makeAddr("federator");
 
         provider_good1 = makeAddr("provider_good1");
         provider_good2 = makeAddr("provider_good2");
@@ -374,13 +376,13 @@ contract PrimeNetworkTest is Test {
 
     function test_nodeOps() public {
         addProvider(provider_good1);
+        whitelistProvider(provider_good1);
 
         addNode(provider_good1, node_good1, node_good1_sk);
         addNode(provider_good1, node_good2, node_good2_sk);
         addNode(provider_good1, node_good3, node_good3_sk);
         addNode(provider_good1, node_bad1, node_bad1_sk);
 
-        whitelistProvider(provider_good1);
         validateNode(provider_good1, node_good1);
         validateNode(provider_good1, node_good2);
         validateNode(provider_good1, node_good3);
@@ -460,6 +462,8 @@ contract PrimeNetworkTest is Test {
     function test_noNodeOwnedByMultipleProviders() public {
         addProvider(provider_good1);
         addProvider(provider_good2);
+        whitelistProvider(provider_good1);
+        whitelistProvider(provider_good2);
 
         addNode(provider_good1, node_good1, node_good1_sk);
         // should revert as node is already owned by provider_good1
@@ -590,6 +594,10 @@ contract PrimeNetworkTest is Test {
         // register provider
         AI.approve(address(primeNetwork), 10);
         primeNetwork.registerProvider(10);
+        // whitelist provider
+        vm.startPrank(validator);
+        primeNetwork.whitelistProvider(provider_good1);
+        vm.startPrank(provider_good1);
         // create a signature from node and add node
         bytes32 digest = keccak256(abi.encodePacked(provider_good1, node_good1)).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(node_good1_sk, digest);
@@ -599,8 +607,6 @@ contract PrimeNetworkTest is Test {
         // end provider role -------
         // start validator role-----
         vm.startPrank(validator);
-        // whitelist provider
-        primeNetwork.whitelistProvider(provider_good1);
         // validate node
         primeNetwork.validateNode(provider_good1, node_good1);
         // end validator role ------
