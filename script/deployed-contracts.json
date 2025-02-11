@@ -1,0 +1,98 @@
+{
+    "local": {
+        "rpc_url": "http://localhost:8545",
+        "contracts": [
+            {
+                "name": "ai_token",
+                "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+            },
+            {
+                "name": "compute_pool",
+                "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F"
+            },
+            {
+                "name": "stake_manager",
+                "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
+            },
+            {
+                "name": "compute_registry",
+                "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
+            },
+            {
+                "name": "rewards_distributor",
+                "address": "0x0000000000000000000000000000000000000000"
+            }
+        ],
+        "addresses": {
+            "compute_orchestrator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "federator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "validator": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+        }
+    },
+    "devnet": {
+        "rpc_url": "http://<devnet-ip>:8545",
+        "contracts": [
+            {
+                "name": "ai_token",
+                "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+            },
+            {
+                "name": "compute_pool",
+                "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F"
+            },
+            {
+                "name": "stake_manager",
+                "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
+            },
+            {
+                "name": "compute_registry",
+                "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
+            },
+            {
+                "name": "rewards_distributor",
+                "address": "0x0000000000000000000000000000000000000000"
+            },
+            {
+                "name": "prime_network",
+                "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+            }
+        ],
+        "addresses": {
+            "federator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+        }
+    },
+    "testnet": {
+        "rpc_url": "https://sepolia.base.org/",
+        "contracts": [
+            {
+                "name": "ai_token",
+                "address": "0x8958D3b2aa57Fe0d8CA6710EF1bED1f104e1CdeD"
+            },
+            {
+                "name": "compute_pool",
+                "address": "0x40d0bdd887b8f1711Ad8eD257dBFDe7d22AE9b67"
+            },
+            {
+                "name": "stake_manager",
+                "address": "0x8e77B1e622f27B2F6cF8ED6605B15515F693bE3F"
+            },
+            {
+                "name": "compute_registry",
+                "address": "0x3B03Ad8e9F03cfA364d80cd52b98E6523E041376"
+            },
+            {
+                "name": "rewards_distributor",
+                "address": "0x0000000000000000000000000000000000000000"
+            },
+            {
+                "name": "prime_network",
+                "address": "0x0DFd3646391c8CBde50b8B3541a2F6f12718c23F"
+            }
+        ],
+        "addresses": {
+            "compute_orchestrator": "0x51090a5d3cB7e9C175b73764e1810c8aE11A585b",
+            "federator": "0x2CFDaD3eAc626B3f46Be50bFCc9f2F371903e147",
+            "validator": "0x6bd642A7Bd0053bB9689280BB1eF8eEd05Ae779b"
+        }
+    }
+}
