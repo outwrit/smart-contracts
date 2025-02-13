@@ -13,6 +13,7 @@ contract SyntheticDataWorkValidator is IWorkValidation {
 
     uint256 domainId;
     address computePool;
+    uint256 workValidityPeriod = 1 days;
 
     struct WorkState {
         EnumerableSet.Bytes32Set workKeys;
@@ -63,6 +64,10 @@ contract SyntheticDataWorkValidator is IWorkValidation {
         }
         require(poolWork[poolId].workKeys.contains(workKey), "Work not found");
         require(!poolWork[poolId].invalidWorkKeys.contains(workKey), "Work already invalidated");
+        require(
+            block.timestamp - poolWork[poolId].work[workKey].timestamp < workValidityPeriod,
+            "Work invalidation window has lapsed"
+        );
 
         poolWork[poolId].invalidWorkKeys.add(workKey);
         WorkInfo memory info = poolWork[poolId].work[workKey];

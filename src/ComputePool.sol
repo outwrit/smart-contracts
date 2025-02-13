@@ -292,6 +292,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
 
         require(poolStates[poolId].poolNodes.contains(msg.sender), "ComputePool: node not in pool");
         require(computeRegistry.getNodeProvider(node) == provider, "ComputePool: node not owned by provider");
+        require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: dest pool is not ready");
 
         IDomainRegistry.Domain memory domainInfo = domainRegistry.get(pools[poolId].domainId);
         IWorkValidation workValidation = IWorkValidation(domainInfo.validationLogic);
