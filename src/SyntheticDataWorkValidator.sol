@@ -29,9 +29,10 @@ contract SyntheticDataWorkValidator is IWorkValidation {
 
     mapping(uint256 => WorkState) poolWork;
 
-    constructor(uint256 _domainId, address _computePool) {
+    constructor(uint256 _domainId, address _computePool, uint256 _workValidityPeriod) {
         domainId = _domainId;
         computePool = _computePool;
+        workValidityPeriod = _workValidityPeriod;
     }
 
     function submitWork(uint256 _domainId, uint256 poolId, address provider, address nodeId, bytes calldata data)
