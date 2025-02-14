@@ -25,6 +25,9 @@ Prime Network is a protocol for decentralized, incentivized compute orchestratio
 
 ## Core Contracts
 
+![Contracts Diagram](./assets/contracts.svg)
+<img src="./assets/contracts.svg">
+
 ### 1. PrimeNetwork (coordinator contract)
 - **Role Management**: Implements `FEDERATOR_ROLE` and `VALIDATOR_ROLE` for controlling who can create domains, whitelist providers, etc.  
 - **Registration**: Providers can register with a stake, and compute nodes can be added with a valid signature.  
