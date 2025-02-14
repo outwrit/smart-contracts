@@ -1,0 +1,210 @@
+digraph G {
+  graph [rankdir=TB, splines=ortho, dpi=75, bgcolor=black, ranksep=1.0, nodesep=1.5];
+  node [shape=plaintext];
+  edge [color=white, fontcolor=white];
+
+  PrimeNetwork [label=<
+    <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="black" COLOR="white">
+      <TR>
+        <TD ALIGN="CENTER" BGCOLOR="black">
+          <FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white"><B>PrimeNetwork</B></FONT>
+        </TD>
+      </TR>
+      <TR>
+        <TD BGCOLOR="black">
+          <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+FEDERATOR_ROLE</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+VALIDATOR_ROLE</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-computeRegistry: IComputeRegistry</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-domainRegistry: IDomainRegistry</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-stakeManager: IComputeRegistry</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-computePool: IComputePool</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+whitelistProvider()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+blacklistProvider()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+validateNode()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+invalidateNode()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+registerProvider()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+deregisterProvider()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+addComputeNode()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+removeComputeNode()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+slash()</FONT></TD></TR>
+          </TABLE>
+        </TD>
+      </TR>
+    </TABLE>
+  >];
+           
+
+  DomainRegistry [label=<
+    <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="black" COLOR="white">
+      <TR>
+        <TD ALIGN="CENTER" BGCOLOR="black">
+          <FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white"><B>DomainRegistry</B></FONT>
+        </TD>
+      </TR>
+      <TR>
+        <TD BGCOLOR="black">
+          <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+PRIME_ROLE</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-domains: Domain[]</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+create()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+updateValidationLogic()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+updateParameters()</FONT></TD></TR>
+          </TABLE>
+        </TD>
+      </TR>
+    </TABLE>
+  >, pos="-4,-4!"];
+
+  StakeManager [label=<
+    <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="black" COLOR="white">
+      <TR>
+        <TD ALIGN="CENTER" BGCOLOR="black">
+          <FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white"><B>StakeManager</B></FONT>
+        </TD>
+      </TR>
+      <TR>
+        <TD BGCOLOR="black">
+          <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+PRIME_ROLE</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+stake()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+unstake()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+withdraw()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+slash()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+setStakeMinimum()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+setUnbondingPeriod()</FONT></TD></TR>
+          </TABLE>
+        </TD>
+      </TR>
+    </TABLE>
+  >, pos="-2,-!"];
+
+  ComputeRegistry [label=<
+    <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="black" COLOR="white">
+      <TR>
+        <TD ALIGN="CENTER" BGCOLOR="black">
+          <FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white"><B>ComputeRegistry</B></FONT>
+        </TD>
+      </TR>
+      <TR>
+        <TD BGCOLOR="black">
+          <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+PRIME_ROLE</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+COMPUTE_POOL_ROLE</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-providers: mapping(address = ComputeProvider)</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-nodes: mapping(address = ComputeNode)</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+register()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+deregister()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+addComputeNode()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+removeComputeNode()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+setWhitelistStatus()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+setNodeValidationStatus()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+updateNodeStatus()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+setComputePool()</FONT></TD></TR>
+          </TABLE>
+        </TD>
+      </TR>
+    </TABLE>
+  >];
+
+  ComputePool [label=<
+    <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="black" COLOR="white">
+      <TR>
+        <TD ALIGN="CENTER" BGCOLOR="black">
+          <FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white"><B>ComputePool</B></FONT>
+        </TD>
+      </TR>
+      <TR>
+        <TD BGCOLOR="black">
+          <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+PRIME_ROLE</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+FEDERATOR_ROLE</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-poolIdCounter: uint256</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-pools: mapping(uint256 -&gt; PoolInfo)</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+createComputePool()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+startComputePool()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+endComputePool()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+joinComputePool()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+leaveComputePool()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+changeComputePool()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+blacklistNode()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+blacklistNodeList()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+blacklistProvider()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+blacklistProviderList()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+ejectNode()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+purgeProvider()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+updateComputeLimit()</FONT></TD></TR>
+          </TABLE>
+        </TD>
+      </TR>
+    </TABLE>
+  >];
+
+  RewardsDistributorFixedFactory [label=<
+    <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="black" COLOR="white">
+      <TR>
+        <TD ALIGN="CENTER" BGCOLOR="black">
+          <FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white"><B>RewardsDistributorFixedFactory</B></FONT>
+        </TD>
+      </TR>
+      <TR>
+        <TD BGCOLOR="black">
+          <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+REWARD_CREATOR</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-computePool: IComputePool</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+createRewardsDistributor()</FONT></TD></TR>
+          </TABLE>
+        </TD>
+      </TR>
+    </TABLE>
+  >];
+
+  RewardsDistributorFixed [label=<
+    <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="black" COLOR="white">
+      <TR>
+        <TD ALIGN="CENTER" BGCOLOR="black">
+          <FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white"><B>RewardsDistributorFixed</B></FONT>
+        </TD>
+      </TR>
+      <TR>
+        <TD BGCOLOR="black">
+          <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+PRIME_ROLE</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+FEDERATOR_ROLE</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+REWARDS_MANAGER_ROLE</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-computePool: IComputePool</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">-computeRegistry: IComputeRegistry</FONT></TD></TR>
+            <HR/>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+joinPool()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+leavePool()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+claimRewards()</FONT></TD></TR>
+            <TR><TD ALIGN="LEFT"><FONT FACE="Helvetica" POINT-SIZE="14" COLOR="white">+endRewards()</FONT></TD></TR>
+          </TABLE>
+        </TD>
+      </TR>
+    </TABLE>
+  >];
+
+  PrimeNetwork -> DomainRegistry [arrowhead="empty"];
+  PrimeNetwork -> StakeManager [arrowhead="empty"];
+  PrimeNetwork -> ComputePool [arrowhead="empty"];
+  PrimeNetwork -> ComputeRegistry [arrowhead="empty"];
+  ComputePool -> RewardsDistributorFixedFactory [arrowhead="empty"];
+  RewardsDistributorFixedFactory -> RewardsDistributorFixed [arrowhead="empty"];
+  RewardsDistributorFixed -> ComputePool [arrowhead="empty", dir="both"];
+  ComputePool -> ComputeRegistry [arrowhead="empty", dir="both"];
+  ComputePool -> DomainRegistry [arrowhead="empty"];
+}
+

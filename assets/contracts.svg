@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1171pt" height="1472pt" viewBox="0.00 0.00 1204.94 1513.60">
+<g id="graph0" class="graph" transform="scale(0.972222 0.972222) rotate(0) translate(4 1509.6)">
+<title>G</title>
+<polygon fill="black" stroke="none" points="-4,4 -4,-1509.6 1200.94,-1509.6 1200.94,4 -4,4"/>
+<!-- PrimeNetwork -->
+<g id="node1" class="node">
+<title>PrimeNetwork</title>
+<polygon fill="black" stroke="none" points="459.42,-1150.8 459.42,-1501.6 704.94,-1501.6 704.94,-1150.8 459.42,-1150.8"/>
+<polygon fill="black" stroke="none" points="460.42,-1473.8 460.42,-1500.6 703.94,-1500.6 703.94,-1473.8 460.42,-1473.8"/>
+<polygon fill="none" stroke="white" points="460.42,-1473.8 460.42,-1500.6 703.94,-1500.6 703.94,-1473.8 460.42,-1473.8"/>
+<text text-anchor="start" x="503.61" y="-1484" font-family="Times,serif" font-size="14.00">          </text>
+<text text-anchor="start" x="538.61" y="-1484" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00" fill="white">PrimeNetwork</text>
+<text text-anchor="start" x="632.75" y="-1484" font-family="Times,serif" font-size="14.00">        </text>
+<polygon fill="black" stroke="none" points="460.42,-1151.8 460.42,-1473.8 703.94,-1473.8 703.94,-1151.8 460.42,-1151.8"/>
+<polygon fill="none" stroke="white" points="460.42,-1151.8 460.42,-1473.8 703.94,-1473.8 703.94,-1151.8 460.42,-1151.8"/>
+<text text-anchor="start" x="467.42" y="-1454.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+FEDERATOR_ROLE</text>
+<text text-anchor="start" x="467.42" y="-1433.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+VALIDATOR_ROLE</text>
+<text text-anchor="start" x="467.42" y="-1412.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-computeRegistry: IComputeRegistry</text>
+<text text-anchor="start" x="467.42" y="-1391.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-domainRegistry: IDomainRegistry</text>
+<text text-anchor="start" x="467.42" y="-1371" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-stakeManager: IComputeRegistry</text>
+<text text-anchor="start" x="467.42" y="-1350.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-computePool: IComputePool</text>
+<text text-anchor="start" x="467.42" y="-1329.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+whitelistProvider()</text>
+<text text-anchor="start" x="467.42" y="-1308.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+blacklistProvider()</text>
+<text text-anchor="start" x="467.42" y="-1287.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+validateNode()</text>
+<text text-anchor="start" x="467.42" y="-1267" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+invalidateNode()</text>
+<text text-anchor="start" x="467.42" y="-1246.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+registerProvider()</text>
+<text text-anchor="start" x="467.42" y="-1225.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+deregisterProvider()</text>
+<text text-anchor="start" x="467.42" y="-1204.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+addComputeNode()</text>
+<text text-anchor="start" x="467.42" y="-1183.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+removeComputeNode()</text>
+<text text-anchor="start" x="467.42" y="-1163" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+slash()</text>
+<polygon fill="white" stroke="white" points="465.42,-1427.2 465.42,-1427.2 698.94,-1427.2 698.94,-1427.2 465.42,-1427.2"/>
+<polygon fill="white" stroke="white" points="465.42,-1344 465.42,-1344 698.94,-1344 698.94,-1344 465.42,-1344"/>
+<polygon fill="none" stroke="white" points="459.42,-1150.8 459.42,-1501.6 704.94,-1501.6 704.94,-1150.8 459.42,-1150.8"/>
+</g>
+<!-- DomainRegistry -->
+<g id="node2" class="node">
+<title>DomainRegistry</title>
+<polygon fill="black" stroke="none" points="8,-382.8 8,-525.6 190.36,-525.6 190.36,-382.8 8,-382.8"/>
+<polygon fill="black" stroke="none" points="9,-497.8 9,-524.6 189.36,-524.6 189.36,-497.8 9,-497.8"/>
+<polygon fill="none" stroke="white" points="9,-497.8 9,-524.6 189.36,-524.6 189.36,-497.8 9,-497.8"/>
+<text text-anchor="start" x="14" y="-508" font-family="Times,serif" font-size="14.00">          </text>
+<text text-anchor="start" x="49" y="-508" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00" fill="white">DomainRegistry</text>
+<text text-anchor="start" x="156.36" y="-508" font-family="Times,serif" font-size="14.00">        </text>
+<polygon fill="black" stroke="none" points="9,-383.8 9,-497.8 189.36,-497.8 189.36,-383.8 9,-383.8"/>
+<polygon fill="none" stroke="white" points="9,-383.8 9,-497.8 189.36,-497.8 189.36,-383.8 9,-383.8"/>
+<text text-anchor="start" x="16" y="-478.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+PRIME_ROLE</text>
+<text text-anchor="start" x="16" y="-457.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-domains: Domain[]</text>
+<text text-anchor="start" x="16" y="-436.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+create()</text>
+<text text-anchor="start" x="16" y="-415.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+updateValidationLogic()</text>
+<text text-anchor="start" x="16" y="-395" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+updateParameters()</text>
+<polygon fill="white" stroke="white" points="14,-472 14,-472 184.36,-472 184.36,-472 14,-472"/>
+<polygon fill="white" stroke="white" points="14,-451.2 14,-451.2 184.36,-451.2 184.36,-451.2 14,-451.2"/>
+<polygon fill="none" stroke="white" points="8,-382.8 8,-525.6 190.36,-525.6 190.36,-382.8 8,-382.8"/>
+</g>
+<!-- PrimeNetwork&#45;&gt;DomainRegistry -->
+<g id="edge1" class="edge">
+<title>PrimeNetwork-&gt;DomainRegistry</title>
+<path fill="none" stroke="white" d="M451.62,-1326.2C298.74,-1326.2 66.12,-1326.2 66.12,-1326.2 66.12,-1326.2 66.12,-540.81 66.12,-540.81"/>
+<polygon fill="none" stroke="white" points="69.62,-540.81 66.12,-530.81 62.62,-540.81 69.62,-540.81"/>
+</g>
+<!-- StakeManager -->
+<g id="node3" class="node">
+<title>StakeManager</title>
+<polygon fill="black" stroke="none" points="973.21,-782.4 973.21,-966.8 1143.14,-966.8 1143.14,-782.4 973.21,-782.4"/>
+<polygon fill="black" stroke="none" points="974.21,-939 974.21,-965.8 1142.14,-965.8 1142.14,-939 974.21,-939"/>
+<polygon fill="none" stroke="white" points="974.21,-939 974.21,-965.8 1142.14,-965.8 1142.14,-939 974.21,-939"/>
+<text text-anchor="start" x="979.21" y="-949.2" font-family="Times,serif" font-size="14.00">          </text>
+<text text-anchor="start" x="1014.21" y="-949.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00" fill="white">StakeManager</text>
+<text text-anchor="start" x="1109.14" y="-949.2" font-family="Times,serif" font-size="14.00">        </text>
+<polygon fill="black" stroke="none" points="974.21,-783.4 974.21,-939 1142.14,-939 1142.14,-783.4 974.21,-783.4"/>
+<polygon fill="none" stroke="white" points="974.21,-783.4 974.21,-939 1142.14,-939 1142.14,-783.4 974.21,-783.4"/>
+<text text-anchor="start" x="981.21" y="-919.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+PRIME_ROLE</text>
+<text text-anchor="start" x="981.21" y="-898.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+stake()</text>
+<text text-anchor="start" x="981.21" y="-877.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+unstake()</text>
+<text text-anchor="start" x="981.21" y="-857" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+withdraw()</text>
+<text text-anchor="start" x="981.21" y="-836.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+slash()</text>
+<text text-anchor="start" x="981.21" y="-815.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+setStakeMinimum()</text>
+<text text-anchor="start" x="981.21" y="-794.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+setUnbondingPeriod()</text>
+<polygon fill="white" stroke="white" points="979.21,-913.2 979.21,-913.2 1137.14,-913.2 1137.14,-913.2 979.21,-913.2"/>
+<polygon fill="none" stroke="white" points="973.21,-782.4 973.21,-966.8 1143.14,-966.8 1143.14,-782.4 973.21,-782.4"/>
+</g>
+<!-- PrimeNetwork&#45;&gt;StakeManager -->
+<g id="edge2" class="edge">
+<title>PrimeNetwork-&gt;StakeManager</title>
+<path fill="none" stroke="white" d="M712.88,-1326.2C853.79,-1326.2 1058.18,-1326.2 1058.18,-1326.2 1058.18,-1326.2 1058.18,-982.16 1058.18,-982.16"/>
+<polygon fill="none" stroke="white" points="1061.68,-982.16 1058.18,-972.16 1054.68,-982.16 1061.68,-982.16"/>
+</g>
+<!-- ComputeRegistry -->
+<g id="node4" class="node">
+<title>ComputeRegistry</title>
+<polygon fill="black" stroke="none" points="314.31,-310 314.31,-598.4 638.05,-598.4 638.05,-310 314.31,-310"/>
+<polygon fill="black" stroke="none" points="315.31,-570.6 315.31,-597.4 637.05,-597.4 637.05,-570.6 315.31,-570.6"/>
+<polygon fill="none" stroke="white" points="315.31,-570.6 315.31,-597.4 637.05,-597.4 637.05,-570.6 315.31,-570.6"/>
+<text text-anchor="start" x="386.34" y="-580.8" font-family="Times,serif" font-size="14.00">          </text>
+<text text-anchor="start" x="421.34" y="-580.8" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00" fill="white">ComputeRegistry</text>
+<text text-anchor="start" x="538.02" y="-580.8" font-family="Times,serif" font-size="14.00">        </text>
+<polygon fill="black" stroke="none" points="315.31,-311 315.31,-570.6 637.05,-570.6 637.05,-311 315.31,-311"/>
+<polygon fill="none" stroke="white" points="315.31,-311 315.31,-570.6 637.05,-570.6 637.05,-311 315.31,-311"/>
+<text text-anchor="start" x="322.31" y="-551" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+PRIME_ROLE</text>
+<text text-anchor="start" x="322.31" y="-530.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+COMPUTE_POOL_ROLE</text>
+<text text-anchor="start" x="322.31" y="-509.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-providers: mapping(address = ComputeProvider)</text>
+<text text-anchor="start" x="322.31" y="-488.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-nodes: mapping(address = ComputeNode)</text>
+<text text-anchor="start" x="322.31" y="-467.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+register()</text>
+<text text-anchor="start" x="322.31" y="-447" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+deregister()</text>
+<text text-anchor="start" x="322.31" y="-426.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+addComputeNode()</text>
+<text text-anchor="start" x="322.31" y="-405.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+removeComputeNode()</text>
+<text text-anchor="start" x="322.31" y="-384.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+setWhitelistStatus()</text>
+<text text-anchor="start" x="322.31" y="-363.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+setNodeValidationStatus()</text>
+<text text-anchor="start" x="322.31" y="-343" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+updateNodeStatus()</text>
+<text text-anchor="start" x="322.31" y="-322.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+setComputePool()</text>
+<polygon fill="white" stroke="white" points="320.31,-524 320.31,-524 632.05,-524 632.05,-524 320.31,-524"/>
+<polygon fill="white" stroke="white" points="320.31,-482.4 320.31,-482.4 632.05,-482.4 632.05,-482.4 320.31,-482.4"/>
+<polygon fill="none" stroke="white" points="314.31,-310 314.31,-598.4 638.05,-598.4 638.05,-310 314.31,-310"/>
+</g>
+<!-- PrimeNetwork&#45;&gt;ComputeRegistry -->
+<g id="edge4" class="edge">
+<title>PrimeNetwork-&gt;ComputeRegistry</title>
+<path fill="none" stroke="white" d="M525.08,-1146.84C525.08,-1146.84 525.08,-613.71 525.08,-613.71"/>
+<polygon fill="none" stroke="white" points="528.58,-613.71 525.08,-603.71 521.58,-613.71 528.58,-613.71"/>
+</g>
+<!-- ComputePool -->
+<g id="node5" class="node">
+<title>ComputePool</title>
+<polygon fill="black" stroke="none" points="606.75,-678.4 606.75,-1070.8 849.61,-1070.8 849.61,-678.4 606.75,-678.4"/>
+<polygon fill="black" stroke="none" points="607.75,-1043 607.75,-1069.8 848.61,-1069.8 848.61,-1043 607.75,-1043"/>
+<polygon fill="none" stroke="white" points="607.75,-1043 607.75,-1069.8 848.61,-1069.8 848.61,-1043 607.75,-1043"/>
+<text text-anchor="start" x="651.18" y="-1053.2" font-family="Times,serif" font-size="14.00">          </text>
+<text text-anchor="start" x="686.18" y="-1053.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00" fill="white">ComputePool</text>
+<text text-anchor="start" x="777.18" y="-1053.2" font-family="Times,serif" font-size="14.00">        </text>
+<polygon fill="black" stroke="none" points="607.75,-679.4 607.75,-1043 848.61,-1043 848.61,-679.4 607.75,-679.4"/>
+<polygon fill="none" stroke="white" points="607.75,-679.4 607.75,-1043 848.61,-1043 848.61,-679.4 607.75,-679.4"/>
+<text text-anchor="start" x="614.75" y="-1023.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+PRIME_ROLE</text>
+<text text-anchor="start" x="614.75" y="-1002.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+FEDERATOR_ROLE</text>
+<text text-anchor="start" x="614.75" y="-981.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-poolIdCounter: uint256</text>
+<text text-anchor="start" x="614.75" y="-961" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-pools: mapping(uint256 -&gt; PoolInfo)</text>
+<text text-anchor="start" x="614.75" y="-940.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+createComputePool()</text>
+<text text-anchor="start" x="614.75" y="-919.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+startComputePool()</text>
+<text text-anchor="start" x="614.75" y="-898.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+endComputePool()</text>
+<text text-anchor="start" x="614.75" y="-877.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+joinComputePool()</text>
+<text text-anchor="start" x="614.75" y="-857" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+leaveComputePool()</text>
+<text text-anchor="start" x="614.75" y="-836.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+changeComputePool()</text>
+<text text-anchor="start" x="614.75" y="-815.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+blacklistNode()</text>
+<text text-anchor="start" x="614.75" y="-794.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+blacklistNodeList()</text>
+<text text-anchor="start" x="614.75" y="-773.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+blacklistProvider()</text>
+<text text-anchor="start" x="614.75" y="-753" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+blacklistProviderList()</text>
+<text text-anchor="start" x="614.75" y="-732.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+ejectNode()</text>
+<text text-anchor="start" x="614.75" y="-711.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+purgeProvider()</text>
+<text text-anchor="start" x="614.75" y="-690.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+updateComputeLimit()</text>
+<polygon fill="white" stroke="white" points="612.75,-996.4 612.75,-996.4 843.61,-996.4 843.61,-996.4 612.75,-996.4"/>
+<polygon fill="white" stroke="white" points="612.75,-954.8 612.75,-954.8 843.61,-954.8 843.61,-954.8 612.75,-954.8"/>
+<polygon fill="none" stroke="white" points="606.75,-678.4 606.75,-1070.8 849.61,-1070.8 849.61,-678.4 606.75,-678.4"/>
+</g>
+<!-- PrimeNetwork&#45;&gt;ComputePool -->
+<g id="edge3" class="edge">
+<title>PrimeNetwork-&gt;ComputePool</title>
+<path fill="none" stroke="white" d="M655.85,-1147.07C655.85,-1147.07 655.85,-1086.24 655.85,-1086.24"/>
+<polygon fill="none" stroke="white" points="659.35,-1086.24 655.85,-1076.24 652.35,-1086.24 659.35,-1086.24"/>
+</g>
+<!-- ComputePool&#45;&gt;DomainRegistry -->
+<g id="edge9" class="edge">
+<title>ComputePool-&gt;DomainRegistry</title>
+<path fill="none" stroke="white" d="M598.87,-874.6C423.6,-874.6 132.24,-874.6 132.24,-874.6 132.24,-874.6 132.24,-540.87 132.24,-540.87"/>
+<polygon fill="none" stroke="white" points="135.74,-540.87 132.24,-530.87 128.74,-540.87 135.74,-540.87"/>
+</g>
+<!-- ComputePool&#45;&gt;ComputeRegistry -->
+<g id="edge8" class="edge">
+<title>ComputePool-&gt;ComputeRegistry</title>
+<path fill="none" stroke="white" d="M622.4,-663.04C622.4,-663.04 622.4,-613.81 622.4,-613.81"/>
+<polygon fill="white" stroke="white" points="618.9,-663.04 622.4,-673.04 625.9,-663.04 618.9,-663.04"/>
+<polygon fill="none" stroke="white" points="625.9,-613.81 622.4,-603.81 618.9,-613.81 625.9,-613.81"/>
+</g>
+<!-- RewardsDistributorFixedFactory -->
+<g id="node6" class="node">
+<title>RewardsDistributorFixedFactory</title>
+<polygon fill="black" stroke="none" points="762.16,-403.6 762.16,-504.8 1054.2,-504.8 1054.2,-403.6 762.16,-403.6"/>
+<polygon fill="black" stroke="none" points="763.16,-477 763.16,-503.8 1053.2,-503.8 1053.2,-477 763.16,-477"/>
+<polygon fill="none" stroke="white" points="763.16,-477 763.16,-503.8 1053.2,-503.8 1053.2,-477 763.16,-477"/>
+<text text-anchor="start" x="768.16" y="-487.2" font-family="Times,serif" font-size="14.00">          </text>
+<text text-anchor="start" x="803.16" y="-487.2" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00" fill="white">RewardsDistributorFixedFactory</text>
+<text text-anchor="start" x="1020.2" y="-487.2" font-family="Times,serif" font-size="14.00">        </text>
+<polygon fill="black" stroke="none" points="763.16,-404.6 763.16,-477 1053.2,-477 1053.2,-404.6 763.16,-404.6"/>
+<polygon fill="none" stroke="white" points="763.16,-404.6 763.16,-477 1053.2,-477 1053.2,-404.6 763.16,-404.6"/>
+<text text-anchor="start" x="770.16" y="-457.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+REWARD_CREATOR</text>
+<text text-anchor="start" x="770.16" y="-436.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-computePool: IComputePool</text>
+<text text-anchor="start" x="770.16" y="-415.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+createRewardsDistributor()</text>
+<polygon fill="white" stroke="white" points="768.16,-451.2 768.16,-451.2 1048.2,-451.2 1048.2,-451.2 768.16,-451.2"/>
+<polygon fill="white" stroke="white" points="768.16,-430.4 768.16,-430.4 1048.2,-430.4 1048.2,-430.4 768.16,-430.4"/>
+<polygon fill="none" stroke="white" points="762.16,-403.6 762.16,-504.8 1054.2,-504.8 1054.2,-403.6 762.16,-403.6"/>
+</g>
+<!-- ComputePool&#45;&gt;RewardsDistributorFixedFactory -->
+<g id="edge5" class="edge">
+<title>ComputePool-&gt;RewardsDistributorFixedFactory</title>
+<path fill="none" stroke="white" d="M805.88,-674.56C805.88,-674.56 805.88,-519.89 805.88,-519.89"/>
+<polygon fill="none" stroke="white" points="809.38,-519.89 805.88,-509.89 802.38,-519.89 809.38,-519.89"/>
+</g>
+<!-- RewardsDistributorFixed -->
+<g id="node7" class="node">
+<title>RewardsDistributorFixed</title>
+<polygon fill="black" stroke="none" points="943.42,-4 943.42,-230 1188.94,-230 1188.94,-4 943.42,-4"/>
+<polygon fill="black" stroke="none" points="944.42,-202.2 944.42,-229 1187.94,-229 1187.94,-202.2 944.42,-202.2"/>
+<polygon fill="none" stroke="white" points="944.42,-202.2 944.42,-229 1187.94,-229 1187.94,-202.2 944.42,-202.2"/>
+<text text-anchor="start" x="951.44" y="-212.4" font-family="Times,serif" font-size="14.00">          </text>
+<text text-anchor="start" x="986.44" y="-212.4" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00" fill="white">RewardsDistributorFixed</text>
+<text text-anchor="start" x="1152.92" y="-212.4" font-family="Times,serif" font-size="14.00">        </text>
+<polygon fill="black" stroke="none" points="944.42,-5 944.42,-202.2 1187.94,-202.2 1187.94,-5 944.42,-5"/>
+<polygon fill="none" stroke="white" points="944.42,-5 944.42,-202.2 1187.94,-202.2 1187.94,-5 944.42,-5"/>
+<text text-anchor="start" x="951.42" y="-182.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+PRIME_ROLE</text>
+<text text-anchor="start" x="951.42" y="-161.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+FEDERATOR_ROLE</text>
+<text text-anchor="start" x="951.42" y="-141" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+REWARDS_MANAGER_ROLE</text>
+<text text-anchor="start" x="951.42" y="-120.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-computePool: IComputePool</text>
+<text text-anchor="start" x="951.42" y="-99.4" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">-computeRegistry: IComputeRegistry</text>
+<text text-anchor="start" x="951.42" y="-78.6" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+joinPool()</text>
+<text text-anchor="start" x="951.42" y="-57.8" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+leavePool()</text>
+<text text-anchor="start" x="951.42" y="-37" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+claimRewards()</text>
+<text text-anchor="start" x="951.42" y="-16.2" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">+endRewards()</text>
+<polygon fill="white" stroke="white" points="949.42,-134.8 949.42,-134.8 1182.94,-134.8 1182.94,-134.8 949.42,-134.8"/>
+<polygon fill="white" stroke="white" points="949.42,-93.2 949.42,-93.2 1182.94,-93.2 1182.94,-93.2 949.42,-93.2"/>
+<polygon fill="none" stroke="white" points="943.42,-4 943.42,-230 1188.94,-230 1188.94,-4 943.42,-4"/>
+</g>
+<!-- RewardsDistributorFixedFactory&#45;&gt;RewardsDistributorFixed -->
+<g id="edge6" class="edge">
+<title>RewardsDistributorFixedFactory-&gt;RewardsDistributorFixed</title>
+<path fill="none" stroke="white" d="M998.81,-399.65C998.81,-399.65 998.81,-245.19 998.81,-245.19"/>
+<polygon fill="none" stroke="white" points="1002.31,-245.19 998.81,-235.19 995.31,-245.19 1002.31,-245.19"/>
+</g>
+<!-- RewardsDistributorFixed&#45;&gt;ComputePool -->
+<g id="edge7" class="edge">
+<title>RewardsDistributorFixed-&gt;ComputePool</title>
+<path fill="none" stroke="white" d="M1106.67,-245.29C1106.67,-245.29 1106.67,-726.4 1106.67,-726.4 1106.67,-726.4 868.89,-726.4 868.89,-726.4"/>
+<polygon fill="white" stroke="white" points="1110.17,-245.29 1106.67,-235.29 1103.17,-245.29 1110.17,-245.29"/>
+<polygon fill="none" stroke="white" points="868.89,-722.9 858.89,-726.4 868.89,-729.9 868.89,-722.9"/>
+</g>
+</g>
+</svg>
