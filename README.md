@@ -17,7 +17,8 @@ Prime Network is a protocol for decentralized, incentivized compute orchestratio
 - **Roles**:  
   - **Federator**: Can set high-level parameters and create “domains.”  
   - **Validator**: Maintains the quality of the network by whitelisting and validating providers/nodes and their work.
-  - **Provider**: Supplies compute resources by staking and adding nodes.  
+  - **Provider**: Supplies compute resources by staking and adding nodes.
+  - **Compute Manager**: Creates compute pools and manages their lifecycle, invites nodes to contribute compute, has the ability to remove or blacklist underperforming nodes or providers from the pool they manage.
 - **Domains**: Group compute tasks or workloads within a logical boundary. Each domain may have specialized validation logic and operational parameters.  
 - **Compute Pools**: Aggregates nodes from various providers for specific tasks, tracks active node time intervals, and calculates rewards.
 
