@@ -93,7 +93,7 @@ contract SyntheticDataWorkValidator is IWorkValidation {
 
     function getWorkSince(uint256 poolId, uint256 timestamp) external view returns (bytes32[] memory) {
         uint256 length = poolWork[poolId].workKeys.length();
-        int256 index = 0;
+        int256 index = -1;
         for (int256 i = int256(length - 1); i >= 0; i--) {
             bytes32 workKey = poolWork[poolId].workKeys.at(uint256(i));
             if (poolWork[poolId].work[workKey].timestamp < timestamp) {
@@ -104,16 +104,16 @@ contract SyntheticDataWorkValidator is IWorkValidation {
         if (index == int256(length - 1)) {
             return new bytes32[](0);
         }
-        bytes32[] memory result = new bytes32[](uint256(length - uint256(index)));
+        bytes32[] memory result = new bytes32[](uint256(length - uint256(index + 1)));
         for (uint256 i = 0; i < result.length; i++) {
-            result[i] = poolWork[poolId].workKeys.at(uint256(index) + i);
+            result[i] = poolWork[poolId].workKeys.at(uint256(index + 1) + i);
         }
         return result;
     }
 
     function getInvalidWorkSince(uint256 poolId, uint256 timestamp) external view returns (bytes32[] memory) {
         uint256 length = poolWork[poolId].invalidWorkKeys.length();
-        int256 index = 0;
+        int256 index = -1;
         for (int256 i = int256(length - 1); i >= 0; i--) {
             bytes32 workKey = poolWork[poolId].invalidWorkKeys.at(uint256(i));
             if (poolWork[poolId].work[workKey].timestamp < timestamp) {
@@ -124,9 +124,9 @@ contract SyntheticDataWorkValidator is IWorkValidation {
         if (index == int256(length - 1)) {
             return new bytes32[](0);
         }
-        bytes32[] memory result = new bytes32[](uint256(length - uint256(index)));
+        bytes32[] memory result = new bytes32[](uint256(length - uint256(index + 1)));
         for (uint256 i = 0; i < result.length; i++) {
-            result[i] = poolWork[poolId].invalidWorkKeys.at(uint256(index) + i);
+            result[i] = poolWork[poolId].invalidWorkKeys.at(uint256(index + 1) + i);
         }
         return result;
     }
