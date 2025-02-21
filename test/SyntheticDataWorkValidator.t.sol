@@ -84,13 +84,16 @@ contract SyntheticDataWorkValidatorTest is Test {
         bytes32 workKey1 = keccak256("test_work_1");
         bytes32 workKey2 = keccak256("test_work_2");
         
+        bytes32[] memory recentWork = validator.getWorkSince(POOL_ID, 0);
+        assertEq(recentWork.length, 0, "Should have no work");
+
         vm.warp(1000);
         validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey1));
         
         vm.warp(2000);
         validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey2));
 
-        bytes32[] memory recentWork = validator.getWorkSince(POOL_ID, 2001);
+        recentWork = validator.getWorkSince(POOL_ID, 2001);
         assertEq(recentWork.length, 0, "Should have no work");
 
         recentWork = validator.getWorkSince(POOL_ID, 1500);
@@ -118,10 +121,13 @@ contract SyntheticDataWorkValidatorTest is Test {
         vm.warp(4000);
         validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey4));
         
+        bytes32[] memory recentInvalidWork = validator.getInvalidWorkSince(POOL_ID, 0);
+        assertEq(recentInvalidWork.length, 0, "Should have one recent invalid work");
+
         validator.invalidateWork(POOL_ID, abi.encodePacked(workKey2));
         validator.invalidateWork(POOL_ID, abi.encodePacked(workKey3));
 
-        bytes32[] memory recentInvalidWork = validator.getInvalidWorkSince(POOL_ID, 3001);
+        recentInvalidWork = validator.getInvalidWorkSince(POOL_ID, 3001);
         assertEq(recentInvalidWork.length, 0, "Should have one recent invalid work");
 
         recentInvalidWork = validator.getInvalidWorkSince(POOL_ID, 3000);
