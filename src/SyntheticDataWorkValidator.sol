@@ -83,6 +83,19 @@ contract SyntheticDataWorkValidator is IWorkValidation {
         return poolWork[poolId].work[workKey];
     }
 
+    function getWorkValidity(uint256 poolId, bytes32 workKey) external view returns (int256) {
+        bool inInvalidMap = poolWork[poolId].invalidWorkKeys.contains(workKey);
+        bool inValidMap = poolWork[poolId].workKeys.contains(workKey);
+
+        if (inInvalidMap) {
+            return 0;
+        } else if (inValidMap) {
+            return 1;
+        } else {
+            return -1;
+        }
+    }
+
     function getWorkKeys(uint256 poolId) external view returns (bytes32[] memory) {
         return poolWork[poolId].workKeys.values();
     }
