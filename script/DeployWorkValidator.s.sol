@@ -16,11 +16,8 @@ contract DeployWorkValidatorScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy SyntheticDataWorkValidator
-        SyntheticDataWorkValidator workValidator = new SyntheticDataWorkValidator(
-            domainId,
-            computePool,
-            workValidityPeriod
-        );
+        SyntheticDataWorkValidator workValidator =
+            new SyntheticDataWorkValidator(domainId, computePool, workValidityPeriod);
 
         vm.stopBroadcast();
 
@@ -35,4 +32,3 @@ contract DeployWorkValidatorScript is Script {
         vm.writeJson(finalJson, "./release/synthetic_data_work_validator.json");
     }
 }
-
