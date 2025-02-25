@@ -44,7 +44,6 @@ contract DeployScript is Script {
         // Set ComputePool in RewardsDistributorFixedFactory
         rewardsDistributorFactory.setComputePool(computePool);
 
-
         // Set up module addresses in PrimeNetwork
         primeNetwork.setModuleAddresses(
             address(computeRegistry), address(domainRegistry), address(stakeManager), address(computePool)
