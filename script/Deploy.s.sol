@@ -8,6 +8,7 @@ import "../src/ComputeRegistry.sol";
 import "../src/DomainRegistry.sol";
 import "../src/PrimeNetwork.sol";
 import "../src/StakeManager.sol";
+import "../src/SyntheticDataWorkValidator.sol";
 import {RewardsDistributorFixedFactory} from "../src/RewardsDistributorFixedFactory.sol";
 
 contract DeployScript is Script {
@@ -42,6 +43,7 @@ contract DeployScript is Script {
             new ComputePool(address(primeNetwork), domainRegistry, computeRegistry, rewardsDistributorFactory, aiToken);
         // Set ComputePool in RewardsDistributorFixedFactory
         rewardsDistributorFactory.setComputePool(computePool);
+
 
         // Set up module addresses in PrimeNetwork
         primeNetwork.setModuleAddresses(
