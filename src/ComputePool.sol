@@ -177,6 +177,11 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
             require(!poolStates[poolId].blacklistedNodes[nodekey[i]], "ComputePool: node is blacklisted");
         }
 
+        require(
+            computeRegistry.getWhitelistStatus(provider),
+            "ComputePool: provider has not been allowed to join pools by federator"
+        );
+
         if (!poolStates[poolId].poolProviders.contains(provider)) {
             poolStates[poolId].poolProviders.add(provider);
         }
@@ -293,6 +298,12 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         require(poolStates[poolId].poolNodes.contains(msg.sender), "ComputePool: node not in pool");
         require(computeRegistry.getNodeProvider(node) == provider, "ComputePool: node not owned by provider");
         require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: dest pool is not ready");
+        require(!poolStates[poolId].blacklistedNodes[node], "ComputePool: node is blacklisted");
+        require(!poolStates[poolId].blacklistedProviders[provider], "ComputePool: provider is blacklisted");
+        require(
+            computeRegistry.getWhitelistStatus(provider),
+            "ComputePool: provider has not been allowed to join pools by federator"
+        );
 
         IDomainRegistry.Domain memory domainInfo = domainRegistry.get(pools[poolId].domainId);
         IWorkValidation workValidation = IWorkValidation(domainInfo.validationLogic);
