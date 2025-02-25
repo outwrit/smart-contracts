@@ -14,3 +14,4 @@ forge inspect --via-ir --json DomainRegistry abi > ./release/domain_registry.jso
 forge inspect --via-ir --json PrimeNetwork abi > ./release/prime_network.json
 forge inspect --via-ir --json StakeManager abi > ./release/stake_manager.json
 forge inspect --via-ir --json RewardsDistributorFixed abi > ./release/rewards_distributor.json
+forge inspect --via-ir --json SyntheticDataWorkValidator abi > ./release/synthetic_data_work_validator.json
