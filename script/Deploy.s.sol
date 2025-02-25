@@ -8,7 +8,6 @@ import "../src/ComputeRegistry.sol";
 import "../src/DomainRegistry.sol";
 import "../src/PrimeNetwork.sol";
 import "../src/StakeManager.sol";
-import "../src/SyntheticDataWorkValidator.sol";
 import {RewardsDistributorFixedFactory} from "../src/RewardsDistributorFixedFactory.sol";
 
 contract DeployScript is Script {
