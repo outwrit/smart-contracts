@@ -295,7 +295,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     function submitWork(uint256 poolId, address node, bytes calldata data) external onlyExistingPool(poolId) {
         address provider = msg.sender;
 
-        require(poolStates[poolId].poolNodes.contains(msg.sender), "ComputePool: node not in pool");
+        require(poolStates[poolId].poolNodes.contains(node), "ComputePool: node not in pool");
         require(computeRegistry.getNodeProvider(node) == provider, "ComputePool: node not owned by provider");
         require(pools[poolId].status == PoolStatus.ACTIVE, "ComputePool: dest pool is not ready");
         require(!poolStates[poolId].blacklistedNodes[node], "ComputePool: node is blacklisted");
