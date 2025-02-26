@@ -6,3 +6,5 @@ export DOMAIN_ID=0
 export COMPUTE_POOL_ADDRESS=0x0165878A594ca255338adfa4d48449f69242Eb8F
 
 forge script script/DeployWorkValidator.s.sol:DeployWorkValidatorScript --rpc-url localhost:8545 --broadcast --via-ir
+
+forge inspect --via-ir --json SyntheticDataWorkValidator abi > ./release/synthetic_data_work_validator.json
