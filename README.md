@@ -95,6 +95,12 @@ forge test --via-ir -vvv
 
 ### Run Locally
 
+First, initialize submodules:
+```shell
+git submodule update --init --recursive
+```
+
+Then run:
 ```shell
 # start a local chain
 anvil
