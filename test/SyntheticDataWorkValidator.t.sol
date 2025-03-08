@@ -122,7 +122,7 @@ contract SyntheticDataWorkValidatorTest is Test {
         validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey4));
 
         bytes32[] memory recentInvalidWork = validator.getInvalidWorkSince(POOL_ID, 0);
-        assertEq(recentInvalidWork.length, 0, "Should have one recent invalid work");
+        assertEq(recentInvalidWork.length, 0, "Should have no recent invalid work");
 
         validator.invalidateWork(POOL_ID, abi.encodePacked(workKey2));
         validator.invalidateWork(POOL_ID, abi.encodePacked(workKey3));
