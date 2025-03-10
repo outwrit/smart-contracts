@@ -18,6 +18,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
     EnumerableMap.AddressToUintMap private nodeSubkeyToIndex;
     EnumerableSet.AddressSet private providerSet;
     mapping(address => EnumerableSet.AddressSet) private providerValidatedNodes;
+    mapping(address => uint256) public providerTotalCompute;
 
     constructor(address primeAdmin) {
         _grantRole(DEFAULT_ADMIN_ROLE, primeAdmin);
@@ -85,6 +86,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         uint256 index = cp.nodes.length - 1;
         nodeSubkeyToIndex.set(subkey, index);
         nodeProviderMap[subkey] = provider;
+        providerTotalCompute[provider] += uint256(computeUnits);
         return index;
     }
 
@@ -106,6 +108,7 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
         cp.nodes.pop();
         nodeSubkeyToIndex.remove(subkey);
         nodeProviderMap[subkey] = address(0);
+        providerTotalCompute[provider] -= uint256(cn.computeUnits);
         return true;
     }
 
@@ -249,5 +252,9 @@ contract ComputeRegistry is IComputeRegistry, AccessControlEnumerable {
 
     function checkProviderExists(address provider) external view returns (bool) {
         return providerSet.contains(provider);
+    }
+
+    function getProviderTotalCompute(address provider) external view returns (uint256) {
+        return providerTotalCompute[provider];
     }
 }

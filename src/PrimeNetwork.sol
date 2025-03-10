@@ -135,6 +135,9 @@ contract PrimeNetwork is AccessControlEnumerable {
         require(computeRegistry.checkProviderExists(provider), "Provider not registered");
         require(computeRegistry.getWhitelistStatus(provider), "Provider not whitelisted");
         require(_verifyNodekeySignature(provider, nodekey, signature), "Invalid signature");
+        uint256 requiredStake = calculateMinimumStake(provider, computeUnits);
+        uint256 providerStake = stakeManager.getStake(provider);
+        require(providerStake >= requiredStake, "Insufficient stake");
         computeRegistry.addComputeNode(provider, nodekey, computeUnits, specsURI);
         emit ComputeNodeAdded(provider, nodekey, specsURI);
     }
@@ -148,16 +151,16 @@ contract PrimeNetwork is AccessControlEnumerable {
     function slash(address provider, uint256 amount, bytes calldata reason) external onlyRole(VALIDATOR_ROLE) {
         uint256 slashed = stakeManager.slash(provider, amount, reason);
         AIToken.transfer(msg.sender, slashed);
+        if (stakeManager.getStake(provider) < calculateMinimumStake(provider, 0)) {
+            computeRegistry.setWhitelistStatus(provider, false);
+            emit ProviderBlacklisted(provider);
+        }
     }
 
     function invalidateWork(uint256 poolId, uint256 penalty, bytes calldata data) external onlyRole(VALIDATOR_ROLE) {
         (address provider, address node) = computePool.invalidateWork(poolId, data);
-        try stakeManager.slash(provider, penalty, data) {
-            if (stakeManager.getStake(provider) < stakeManager.getStakeMinimum()) {
-                computeRegistry.setWhitelistStatus(provider, false);
-                emit ProviderBlacklisted(provider);
-            }
-        } catch {
+        try stakeManager.slash(provider, penalty, data) {}
+        catch {
             // if slashing failed for whatever reason, blacklist provider to make sure they can't submit more work
             computeRegistry.setWhitelistStatus(provider, false);
             emit ProviderBlacklisted(provider);
@@ -174,5 +177,12 @@ contract PrimeNetwork is AccessControlEnumerable {
     {
         bytes32 messageHash = keccak256(abi.encodePacked(provider, nodekey)).toEthSignedMessageHash();
         return SignatureChecker.isValidSignatureNow(nodekey, messageHash, signature);
+    }
+
+    function calculateMinimumStake(address provider, uint256 computeUnits) public view returns (uint256) {
+        uint256 providerTotalCompute = computeRegistry.getProviderTotalCompute(provider);
+        uint256 minStakePerComputeUnit = stakeManager.getStakeMinimum();
+        uint256 requiredStake = (providerTotalCompute + computeUnits) * minStakePerComputeUnit;
+        return requiredStake;
     }
 }
