@@ -609,6 +609,10 @@ contract PrimeNetworkTest is Test {
         bytes32 digest = keccak256(abi.encodePacked(provider_good1, node_good1)).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(node_good1_sk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
+        vm.expectRevert();
+        // try adding a node with a huge compute capacity, more than we have stake for, should revert
+        primeNetwork.addComputeNode(node_good1, "ipfs://nodekey/", computeUnitsPerNode * 1000000, signature);
+        // this should go through
         primeNetwork.addComputeNode(node_good1, "ipfs://nodekey/", computeUnitsPerNode, signature);
         assertEq(computeRegistry.getNode(provider_good1, node_good1).subkey, node_good1);
         // end provider role -------
