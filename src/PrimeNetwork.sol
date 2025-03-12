@@ -185,9 +185,13 @@ contract PrimeNetwork is AccessControlEnumerable {
             computeRegistry.setWhitelistStatus(provider, false);
             emit ProviderBlacklisted(provider);
         }
-        // invalidate node to queue it for reverification
-        computeRegistry.setNodeValidationStatus(provider, node, false);
-        emit ComputeNodeInvalidated(provider, node);
+        // if node is still in registry, invalidate it
+        // to queue it for reverification by the validator
+        // Note: we use try here because it's more gas efficient
+        // than an extra contract call just to check existence
+        try computeRegistry.setNodeValidationStatus(provider, node, false) {
+            emit ComputeNodeInvalidated(provider, node);
+        } catch {}
     }
 
     function _verifyNodekeySignature(address provider, address nodekey, bytes memory signature)
