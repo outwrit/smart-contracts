@@ -786,4 +786,39 @@ contract PrimeNetworkTest is Test {
         vm.expectRevert();
         nodeJoin(domain, pool, provider_good1, node_good1);
     }
+
+    function test_nodeLeaveJoinIdempotency() public {
+        uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
+        uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
+
+        addProvider(provider_good1);
+        whitelistProvider(provider_good1);
+
+        addNode(provider_good1, node_good1, node_good1_sk);
+
+        validateNode(provider_good1, node_good1);
+
+        assertEq(computeRegistry.getNode(provider_good1, node_good1).subkey, node_good1);
+
+        startPool(pool);
+
+        nodeJoin(domain, pool, provider_good1, node_good1);
+
+        assertEq(isNodeInPool(pool, node_good1), true);
+
+        // make sure node cannot join again
+        vm.expectRevert();
+        nodeJoin(domain, pool, provider_good1, node_good1);
+
+        nodeLeave(pool, provider_good1, node_good1);
+        assertEq(isNodeInPool(pool, node_good1), false);
+
+        // make sure node cannot leave again
+        vm.expectRevert();
+        nodeLeave(pool, provider_good1, node_good1);
+
+        // make sure that we cannot leave with a node that has never joined
+        vm.expectRevert();
+        nodeLeave(pool, provider_good1, node_good2);
+    }
 }
