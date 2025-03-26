@@ -649,6 +649,15 @@ contract PrimeNetworkTest is Test {
         // this should go through
         primeNetwork.addComputeNode(node_good1, "ipfs://nodekey/", computeUnitsPerNode, signature);
         assertEq(computeRegistry.getNode(provider_good1, node_good1).subkey, node_good1);
+
+        // --- Repro Part 1: Add compute to a second node (node_good2) owned by the same provider ---
+        bytes32 digest2 = keccak256(abi.encodePacked(provider_good1, node_good2)).toEthSignedMessageHash();
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(node_good2_sk, digest2);
+        bytes memory signature2 = abi.encodePacked(r2, s2, v2);
+        primeNetwork.addComputeNode(node_good2, "ipfs://nodekey/", computeUnitsPerNode, signature2);
+        assertEq(computeRegistry.getNode(provider_good1, node_good2).subkey, node_good2);
+
+
         // end provider role -------
         // start validator role-----
         vm.startPrank(validator);
@@ -675,6 +684,21 @@ contract PrimeNetworkTest is Test {
         bytes[] memory signatures = new bytes[](1);
         signatures[0] = signature_invite;
         computePool.joinComputePool(poolId, provider_good1, nodes, signatures);
+
+        // --- Repro Part 2: Remove node_good2 from the pool despite it never being added ---
+        // Fetch pool info before removal
+        ComputePool.PoolInfo memory pool = computePool.getComputePool(poolId);
+        // pool contains the compute that was created with only node_good1
+        require(pool.totalCompute == computeUnitsPerNode);
+        // Attempt to remove node_good2 — which was never added to the pool
+        computePool.leaveComputePool(poolId, provider_good1, node_good2);
+        // Fetch updated pool info
+        pool = computePool.getComputePool(poolId);
+        // Pool totalCompute drops to 0 even node_good1 is still in the pool
+        require(pool.totalCompute == 0);
+        // node_good1 is stuck in the pool due to totalCompute underflow on removal
+        vm.expectRevert();
+        computePool.leaveComputePool(poolId, provider_good1, node_good1);
     }
 
     function test_stakeOps() public {
