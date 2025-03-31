@@ -649,6 +649,7 @@ contract PrimeNetworkTest is Test {
         // this should go through
         primeNetwork.addComputeNode(node_good1, "ipfs://nodekey/", computeUnitsPerNode, signature);
         assertEq(computeRegistry.getNode(provider_good1, node_good1).subkey, node_good1);
+
         // end provider role -------
         // start validator role-----
         vm.startPrank(validator);
@@ -666,7 +667,18 @@ contract PrimeNetworkTest is Test {
         bytes32 digest_invite = keccak256(abi.encodePacked(domainId, poolId, node_good1)).toEthSignedMessageHash();
         (uint8 v_invite, bytes32 r_invite, bytes32 s_invite) = vm.sign(computeManager_sk, digest_invite);
         bytes memory signature_invite = abi.encodePacked(r_invite, s_invite, v_invite);
+
+        // part 1: create another pool
+        uint256 poolId2 = computePool.createComputePool(
+            domainId, computeManager, "INTELLECT-2.1", "https://primeintellect.ai/pools/intellect-2", 0
+        );
+        computePool.startComputePool(poolId2);
+        // invite node to join pool
+        bytes32 digest_invite2 = keccak256(abi.encodePacked(domainId, poolId2, node_good1)).toEthSignedMessageHash();
+        (uint8 v_invite2, bytes32 r_invite2, bytes32 s_invite2) = vm.sign(computeManager_sk, digest_invite2);
+        bytes memory signature_invite2 = abi.encodePacked(r_invite2, s_invite2, v_invite2);
         // end pool creator role
+
         // start provider role -----
         vm.startPrank(provider_good1);
         // join pool
@@ -675,7 +687,24 @@ contract PrimeNetworkTest is Test {
         bytes[] memory signatures = new bytes[](1);
         signatures[0] = signature_invite;
         computePool.joinComputePool(poolId, provider_good1, nodes, signatures);
+
+        // step 2: blacklist the provider
+        vm.startPrank(pool_creator);
+        computePool.blacklistAndPurgeProvider(poolId, provider_good1);
+        require(computePool.isProviderInPool(poolId, provider_good1) == false);
+
+        // step 3: provider joins another pool
+        vm.startPrank(provider_good1);
+        signatures[0] = signature_invite2;
+        computePool.joinComputePool(poolId2, provider_good1, nodes, signatures);
+
+        // step 4: provider switches to the pool they were blacklisted from
+        signatures[0] = signature_invite;
+        computePool.changeComputePool(poolId2, poolId, nodes, signatures);
+
+        require(computePool.isProviderInPool(poolId, provider_good1));
     }
+    
 
     function test_stakeOps() public {
         uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");

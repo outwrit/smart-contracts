@@ -1,0 +1,15 @@
+{
+  "add (2) nodes to pool (0) for provider (0xF25EfFaBE73db31b09E4bF903c7e8Dd12f989C81) using multi join - gas:": "138892",
+  "add (20) nodes to pool (0) for provider (0x1571C3f1F531640c97Ef9F8578Eb6C0e64A7fA05) using multi join - gas:": "1446251",
+  "add (20) nodes to pool (0) for provider (0x1bF1d1dC140B707b7f1dd3E968e9F519a364447e) using multi join - gas:": "1376051",
+  "add (20) nodes to pool (0) for provider (0x38De42D6A1fc547461fBAF3D724eeA9CA8Fc94e6) using multi join - gas:": "1376051",
+  "add (20) nodes to pool (0) for provider (0x4D8087fA4Ac334c3EBcf6D1149282A760a431285) using multi join - gas:": "1376051",
+  "add (20) nodes to pool (0) for provider (0x62117CE88300ECE2126Ef0A18D77bCfE3B947D26) using multi join - gas:": "1376051",
+  "add (20) nodes to pool (0) for provider (0x6894bA595531F75AA23Cda62D31f0d11700BE47F) using multi join - gas:": "1376051",
+  "add (20) nodes to pool (0) for provider (0x6955E7f63676dd52a66616D288A85F06c0786D2b) using multi join - gas:": "1376051",
+  "add (20) nodes to pool (0) for provider (0xB8D733AF221eaa5A25B6290efE10E91102b47587) using multi join - gas:": "1376051",
+  "add (20) nodes to pool (0) for provider (0xC1B97396173DDA6a923ad72025b0ACC7944980F2) using multi join - gas:": "1376051",
+  "add (20) nodes to pool (0) for provider (0xcce234200d6A7f62c3d6cB0207837B19c69880E3) using multi join - gas:": "1376051",
+  "blacklist and purge provider from pool": "47870",
+  "blacklist node list from pool": "1642260"
+}

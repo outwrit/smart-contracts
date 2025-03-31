@@ -90,6 +90,7 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
     }
 
     function _removeNodeSafe(uint256 poolId, address provider, address node) internal {
+        require(poolStates[poolId].poolNodes.contains(node), "ComputePool: node not in pool");
         (address node_provider, uint32 computeUnits,,) = computeRegistry.getNodeContractData(node);
         if (node_provider == provider) {
             _removeNode(poolId, provider, node, computeUnits);
