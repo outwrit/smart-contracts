@@ -114,11 +114,11 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
     }
 
     // --------------------------------------------------------------------------------------------
-    // Example "Locked for 24h" Reward Logic
+    // "Locked for 24h" Reward Logic
     // --------------------------------------------------------------------------------------------
 
     /**
-     * @notice Example approach:
+     * @notice Bucket approach:
      *  - totalAllSubmissions: total submissions ever done by this node.
      *  - totalLast24H: the sum of the ring buffer’s most recent 24h.
      *    We treat that as “locked.”
@@ -146,6 +146,19 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
         rewardToken.transfer(node, tokensToSend);
     }
 
+    // --------------------------------------------------------------------------------------------
+    // "Slash Pending Rewards" Logic
+    // --------------------------------------------------------------------------------------------
+
+    /**
+     * @notice Slashes the pending rewards for a node.
+     *         This is useful for slashing rewards if a node is inactive or misbehaving.
+     *         It resets the node's buckets and totalLast24H to zero.
+     *         Optionally, you can send the slashed tokens to a treasury or burn them.
+     * @param node The address of the node whose pending rewards are to be slashed.
+     * @dev This function can only be called by the REWARDS_MANAGER_ROLE.
+     *      It resets the node's buckets and totalLast24H to zero.
+     */
     function slashPendingRewards(address node) external onlyRole(REWARDS_MANAGER_ROLE) {
         _rollBuckets(node);
         NodeBuckets storage nb = nodeBuckets[node];
@@ -216,20 +229,19 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
     }
 
     function joinPool(address node) external onlyRole(COMPUTE_POOL_ROLE) {
-        // If you require special logic on node join, do it here.
-        // E.g., initialize the node’s lastBucketTimestamp if needed.
+        // If special logic is required on node join, add it here.
         if (nodeBuckets[node].lastBucketTimestamp == 0) {
             nodeBuckets[node].lastBucketTimestamp = block.timestamp;
         }
     }
 
     function leavePool(address node) external onlyRole(COMPUTE_POOL_ROLE) {
-        // Optionally roll + finalize the node’s data. You might zero out buckets, etc.
+        // Optionally roll + finalize the node’s data. Zero out buckets, etc.
         _rollBuckets(node);
     }
 
     function endRewards() external onlyRole(COMPUTE_POOL_ROLE) {
-        // If you want to freeze further submissions, do so here.
+        // We freeze further submissions here.
         require(endTime == 0, "Already ended");
         endTime = block.timestamp;
     }
