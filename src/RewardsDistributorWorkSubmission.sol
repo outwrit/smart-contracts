@@ -95,7 +95,6 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
     function submitWork(address node, uint256 workUnits) external onlyRole(COMPUTE_POOL_ROLE) {
         require(endTime == 0, "Rewards have ended");
         require(computePool.isNodeInPool(poolId, node), "Node not in pool");
-        require(workUnits > 0, "Work units must be positive");
 
         NodeBuckets storage nb = nodeBuckets[node];
         // Roll forward first to ensure we’re in the correct active bucket
@@ -147,6 +146,24 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
         rewardToken.transfer(node, tokensToSend);
     }
 
+    function slashPendingRewards(address node) external onlyRole(REWARDS_MANAGER_ROLE) {
+        _rollBuckets(node);
+        NodeBuckets storage nb = nodeBuckets[node];
+        uint256 pending24h = nb.totalLast24H;
+        if (pending24h == 0) {
+            return; // nothing to slash
+        }
+        for (uint256 i = 0; i < NUM_BUCKETS; i++) {
+            nb.buckets[i] = 0; // reset to zero
+        }
+        nb.totalAllSubmissions -= pending24h; // decrement total
+        nb.totalLast24H = 0; // reset to zero
+        nb.currentBucket = 0; // reset to first bucket
+        nb.lastBucketTimestamp = 0; // reset to zero
+            // Optionally, send the slashed tokens to a treasury or burn them
+            // rewardToken.transfer(treasury, pending24h * rewardRatePerUnit);
+    }
+
     // --------------------------------------------------------------------------------------------
     // Optional informational views
     // --------------------------------------------------------------------------------------------
@@ -190,8 +207,7 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
     }
 
     // --------------------------------------------------------------------------------------------
-    // The following methods are left for compatibility with your existing setup.
-    // You can remove or adapt them to your new ring-buffer logic as needed.
+    // The following methods are left for compatibility with the compute based rewards distributor
     // --------------------------------------------------------------------------------------------
 
     function setRewardRate(uint256 newRate) external onlyRole(REWARDS_MANAGER_ROLE) {
