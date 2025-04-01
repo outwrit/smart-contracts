@@ -172,4 +172,11 @@ contract RewardsDistributorFixed is IRewardsDistributor, AccessControlEnumerable
         _updateGlobalIndex();
         endTime = block.timestamp;
     }
+
+    function submitWork(address node, uint256 workUnits) external pure {
+        // suppress warnings
+        node == node;
+        workUnits == workUnits;
+        return;
+    }
 }

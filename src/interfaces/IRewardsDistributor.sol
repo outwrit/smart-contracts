@@ -12,4 +12,5 @@ interface IRewardsDistributor {
     function endRewards() external;
     function joinPool(address node) external;
     function leavePool(address node) external;
+    function submitWork(address node, uint256 workUnits) external;
 }

@@ -752,6 +752,7 @@ contract PrimeNetworkTest is Test {
         uint256 nodeComputeUnits = 1000;
 
         bytes memory work_id = hex"1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        uint256 workUnits = 10;
 
         startPool(pool);
 
@@ -769,7 +770,7 @@ contract PrimeNetworkTest is Test {
         validateNode(provider_good1, node_good1);
         nodeJoin(domain, pool, provider_good1, node_good1);
 
-        computePool.submitWork(pool, node_good1, work_id);
+        computePool.submitWork(pool, node_good1, abi.encodePacked(work_id, workUnits));
 
         // slash provider
         uint256 stake = stakeManager.getStake(provider_good1);
