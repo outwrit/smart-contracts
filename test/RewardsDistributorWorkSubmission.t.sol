@@ -123,6 +123,15 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
     uint256 public constant NUM_BUCKETS = 24;
     uint256 public constant BUCKET_DURATION = 3600; // 1 hour
 
+    function fetchRewards(address _node, bool b) public view returns (uint256) {
+        (uint256 claimable, uint256 locked) = distributor.calculateRewards(_node);
+        if (b == false) {
+            return claimable;
+        } else {
+            return locked;
+        }
+    }
+
     function setUp() public {
         // Deploy and mint tokens
         mockRewardToken = new MockERC20("MockToken", "MTK");
@@ -204,20 +213,20 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
         assertEq(totalAll, 1000);
 
         // The ring buffer locks the last 24h, so if we claim now, we get 0 (all locked).
-        uint256 calcBefore = distributor.calculateRewards(node);
+        uint256 calcBefore = fetchRewards(node, false);
         assertEq(calcBefore, 0, "Should be zero because it's < 24h old");
 
         // Move forward 12 hours
         skip(12 hours);
         // The 1000 is still within 24h, so locked
-        assertEq(distributor.calculateRewards(node), 0);
+        assertEq(fetchRewards(node, false), 0);
 
         // Move forward another 13 hours (total 25h)
         // That should push the first 1000 submission outside the 24h window
         skip(13 hours);
         // Now it's been 25h, so the 1000 is fully unlocked.
         // The ring buffer automatically resets that bucket on the next call or view.
-        uint256 calcAfter = distributor.calculateRewards(node);
+        uint256 calcAfter = fetchRewards(node, false);
         // We expect 1000 unlocked
         assertEq(calcAfter, 1000);
 
@@ -228,7 +237,7 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
         assertEq(lastClaimed, 1000, "lastClaimed should be 1000 now");
 
         // The node receives the tokens
-        assertEq(mockRewardToken.balanceOf(node), 1000, "node's token balance mismatch");
+        assertEq(mockRewardToken.balanceOf(nodeProvider), 1000, "node's token balance mismatch");
     }
 
     // -----------------------------------------------------------------------
@@ -248,30 +257,30 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
         distributor.submitWork(node, 500);
 
         // Both submissions are within 24h => locked
-        uint256 unlocked = distributor.calculateRewards(node);
+        uint256 unlocked = fetchRewards(node, false);
         assertEq(unlocked, 0, "All should be locked still (24h not passed)");
 
         // Skip 23 more hours => total 25h from the first submission, 23h from the second
         skip(23 hours);
         // Now the first 1000 is older than 24h => unlocked
         // The second 500 is at 25-2=23h old => still locked
-        unlocked = distributor.calculateRewards(node);
+        unlocked = fetchRewards(node, false);
         assertEq(unlocked, 1000, "First submission unlocked, second still locked");
 
         // Claim
         vm.prank(nodeProvider);
         distributor.claimRewards(node);
-        assertEq(mockRewardToken.balanceOf(node), 1000);
+        assertEq(mockRewardToken.balanceOf(nodeProvider), 1000);
 
         // Skip 2 more hours => total 25h from the second submission
         skip(2 hours);
         // Now the 500 is also older than 24h => unlocked
-        unlocked = distributor.calculateRewards(node);
+        unlocked = fetchRewards(node, false);
         assertEq(unlocked, 500);
 
         vm.prank(nodeProvider);
         distributor.claimRewards(node);
-        assertEq(mockRewardToken.balanceOf(node), 1500);
+        assertEq(mockRewardToken.balanceOf(nodeProvider), 1500);
     }
 
     // -----------------------------------------------------------------------
@@ -289,12 +298,12 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
 
         // The ring buffer will be fully reset for that node upon next submission or roll
         // So the old 1000 is definitely unlocked
-        uint256 unlocked = distributor.calculateRewards(node);
+        uint256 unlocked = fetchRewards(node, false);
         assertEq(unlocked, 1000);
 
         vm.prank(nodeProvider);
         distributor.claimRewards(node);
-        assertEq(mockRewardToken.balanceOf(node), 1000);
+        assertEq(mockRewardToken.balanceOf(nodeProvider), 1000);
 
         // Submit again
         vm.prank(address(mockComputePool));
@@ -325,13 +334,13 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
         distributor.submitWork(node2, 300);
 
         // Both are <24h => locked, no one gets anything if we claim
-        assertEq(distributor.calculateRewards(node1), 0);
-        assertEq(distributor.calculateRewards(node2), 0);
+        assertEq(fetchRewards(node1, false), 0);
+        assertEq(fetchRewards(node2, false), 0);
 
         skip(25 hours);
         // Now both are fully unlocked
-        uint256 node1Unlocked = distributor.calculateRewards(node1);
-        uint256 node2Unlocked = distributor.calculateRewards(node2);
+        uint256 node1Unlocked = fetchRewards(node1, false);
+        uint256 node2Unlocked = fetchRewards(node2, false);
 
         assertEq(node1Unlocked, 200);
         assertEq(node2Unlocked, 300);
@@ -341,8 +350,8 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
         vm.prank(nodeProvider2);
         distributor.claimRewards(node2);
 
-        assertEq(mockRewardToken.balanceOf(node1), 200);
-        assertEq(mockRewardToken.balanceOf(node2), 300);
+        assertEq(mockRewardToken.balanceOf(nodeProvider1), 200);
+        assertEq(mockRewardToken.balanceOf(nodeProvider2), 300);
     }
 
     // -----------------------------------------------------------------------
@@ -375,8 +384,8 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
         // At t=25h:
         // Node1's first 100 is unlocked, second 100 is 13h old => locked
         // Node2's 50 is 25h old => unlocked
-        uint256 node1Unlocked = distributor.calculateRewards(node1);
-        uint256 node2Unlocked = distributor.calculateRewards(node2);
+        uint256 node1Unlocked = fetchRewards(node1, false);
+        uint256 node2Unlocked = fetchRewards(node2, false);
 
         assertEq(node1Unlocked, 100, "Node1 only the first 100 is unlocked");
         assertEq(node2Unlocked, 50, "Node2's entire 50 is unlocked");
@@ -387,19 +396,19 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
         vm.prank(nodeProvider2);
         distributor.claimRewards(node2);
 
-        assertEq(mockRewardToken.balanceOf(node1), 100);
-        assertEq(mockRewardToken.balanceOf(node2), 50);
+        assertEq(mockRewardToken.balanceOf(nodeProvider1), 100);
+        assertEq(mockRewardToken.balanceOf(nodeProvider2), 50);
 
         // Move ahead another 12 hours => t=37h from the second submission for Node1
         skip(12 hours);
 
         // Now Node1's second 100 is also >24h => unlocked
-        node1Unlocked = distributor.calculateRewards(node1);
+        node1Unlocked = fetchRewards(node1, false);
         assertEq(node1Unlocked, 100);
 
         vm.prank(nodeProvider1);
         distributor.claimRewards(node1);
-        assertEq(mockRewardToken.balanceOf(node1), 200);
+        assertEq(mockRewardToken.balanceOf(nodeProvider1), 200);
     }
 
     // -----------------------------------------------------------------------
@@ -428,13 +437,13 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
 
         // Move 25 hours => old data is unlocked
         skip(25 hours);
-        uint256 unlocked = distributor.calculateRewards(node);
+        uint256 unlocked = fetchRewards(node, false);
         assertEq(unlocked, 500);
 
         // Claim
         vm.prank(nodeProvider);
         distributor.claimRewards(node);
-        assertEq(mockRewardToken.balanceOf(node), 500);
+        assertEq(mockRewardToken.balanceOf(nodeProvider), 500);
     }
 
     // -----------------------------------------------------------------------

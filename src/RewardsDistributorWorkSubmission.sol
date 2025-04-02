@@ -143,7 +143,7 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
         uint256 tokensToSend = claimable * rewardRatePerUnit;
         require(tokensToSend <= rewardToken.balanceOf(address(this)), "Insufficient tokens");
 
-        rewardToken.transfer(node, tokensToSend);
+        rewardToken.transfer(msg.sender, tokensToSend);
     }
 
     // --------------------------------------------------------------------------------------------
@@ -181,7 +181,7 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
     // Optional informational views
     // --------------------------------------------------------------------------------------------
 
-    function calculateRewards(address node) external view returns (uint256) {
+    function calculateRewards(address node) external view returns (uint256, uint256) {
         require(rewardRatePerUnit != 0, "Rate not set");
 
         NodeBuckets memory nb = nodeBuckets[node];
@@ -204,7 +204,9 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
         // “Unlocked so far” if we hypothetically updated now
         uint256 unlockedNow = nb.totalAllSubmissions - simulatedTotalLast24H;
         uint256 claimable = unlockedNow - nb.lastClaimed;
-        return claimable * rewardRatePerUnit;
+        uint256 claimableTokens = claimable * rewardRatePerUnit;
+        uint256 lockedTokens = simulatedTotalLast24H * rewardRatePerUnit;
+        return (claimableTokens, lockedTokens);
     }
 
     function nodeInfo(address node)

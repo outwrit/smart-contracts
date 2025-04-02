@@ -136,12 +136,12 @@ contract RewardsDistributorFixed is IRewardsDistributor, AccessControlEnumerable
         rewardToken.transfer(node, payableAmount);
     }
 
-    function calculateRewards(address node) external view returns (uint256) {
+    function calculateRewards(address node) external view returns (uint256, uint256) {
         NodeDataInternal memory nd = nodeInfoInternal[node];
         uint256 timeDelta;
         // If the node has never joined, or there are no active computeUnits in total, no extra rewards to calculate.
         if (!computePool.isNodeInPool(poolId, node) && nd.unclaimedRewards == 0) {
-            return 0;
+            return (0, 0);
         }
 
         // 1. Calculate how many rewards would be distributed if we updated the global index now
@@ -165,7 +165,7 @@ contract RewardsDistributorFixed is IRewardsDistributor, AccessControlEnumerable
             pending += newlyAccrued;
         }
 
-        return pending;
+        return (pending, 0);
     }
 
     function endRewards() external onlyRole(COMPUTE_POOL_ROLE) {
