@@ -320,6 +320,8 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         IDomainRegistry.Domain memory domainInfo = domainRegistry.get(pools[poolId].domainId);
         IWorkValidation workValidation = IWorkValidation(domainInfo.validationLogic);
         (address provider, address node) = workValidation.invalidateWork(poolId, data);
+        IRewardsDistributor rewardsDistributor = poolStates[poolId].rewardsDistributor;
+        rewardsDistributor.slashPendingRewards(node);
         if (poolStates[poolId].poolNodes.contains(node)) {
             _ejectNode(poolId, node);
         }
