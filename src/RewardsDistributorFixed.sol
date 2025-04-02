@@ -168,6 +168,10 @@ contract RewardsDistributorFixed is IRewardsDistributor, AccessControlEnumerable
         return (pending, 0);
     }
 
+    function slashPendingRewards(address node) external view onlyRole(COMPUTE_POOL_ROLE) {
+        node == node;
+    }
+
     function endRewards() external onlyRole(COMPUTE_POOL_ROLE) {
         _updateGlobalIndex();
         endTime = block.timestamp;

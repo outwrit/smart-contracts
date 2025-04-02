@@ -159,7 +159,11 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
      * @dev This function can only be called by the REWARDS_MANAGER_ROLE.
      *      It resets the node's buckets and totalLast24H to zero.
      */
-    function slashPendingRewards(address node) external onlyRole(REWARDS_MANAGER_ROLE) {
+    function slashPendingRewards(address node) external {
+        // this can be called directly by the REWARDS_MANAGER_ROLE or by the COMPUTE_POOL_ROLE
+        // through a work invalidation submission
+        require(hasRole(REWARDS_MANAGER_ROLE, msg.sender) || hasRole(COMPUTE_POOL_ROLE, msg.sender), "Unauthorized");
+
         _rollBuckets(node);
         NodeBuckets storage nb = nodeBuckets[node];
         uint256 pending24h = nb.totalLast24H;

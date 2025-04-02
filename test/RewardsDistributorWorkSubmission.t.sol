@@ -447,6 +447,68 @@ contract RewardsDistributorWorkSubmissionRingBufferTest is Test {
     }
 
     // -----------------------------------------------------------------------
+    // Test: slashPendingRewards
+    // -----------------------------------------------------------------------
+    function testSlashPendingRewards() public {
+        vm.prank(address(mockComputePool));
+        mockComputePool.joinComputePool(node, 10);
+
+        // 1) Node submits some work => last24H = 100
+        vm.prank(address(mockComputePool));
+        distributor.submitWork(node, 100);
+
+        // Skip 25h so the 100 is unlocked. totalAll=100, last24H=100, but effectively 0 locked.
+        skip(25 hours);
+
+        // 2) Node submits more work => last24H = 200, totalAll=300
+        vm.prank(address(mockComputePool));
+        distributor.submitWork(node, 200);
+
+        // Check ring-buffer state
+        (uint256 last24HBefore,,, bool isActive) = distributor.nodeInfo(node);
+        assertTrue(isActive);
+        assertEq(
+            last24HBefore,
+            300 - 100,
+            "Only the new 200 should be truly locked, but last24H tracks all submissions in <24h"
+        );
+        // Because we haven't done a "roll" on the now-unlocked 100 yet, last24H might read 300.
+        // But the oldest 100 is older than 24h.
+        // The .calculateRewards(...) should reflect 100 unlocked, 200 locked.
+
+        // Confirm the actual "unlocked" portion is 100
+        uint256 unlockedNow = fetchRewards(node, false);
+        assertEq(unlockedNow, 100, "First 100 is unlocked, second 200 is locked.");
+
+        // 3) Slash the node’s pending 24h => manager only
+        // That should remove the locked 200 from totalAll, zero the ring buffer, etc.
+        vm.prank(manager);
+        distributor.slashPendingRewards(node);
+
+        // 4) After slash, the last24H and buckets are all zero. totalAll = 100 (the unlocked portion remains).
+        (uint256 last24HAfter, uint256 totalAllAfter,,) = distributor.nodeInfo(node);
+        assertEq(last24HAfter, 0, "Should have cleared the ring buffer");
+        assertEq(totalAllAfter, 100, "Should have subtracted the slashed 200 from totalAll");
+        // lastClaimed should remain the same, because we didn’t claim.
+
+        // 5) Confirm that now, if we skip 25 hours more, there is no "locked" portion to unlock
+        skip(25 hours);
+        uint256 unlockedAfterSlash = fetchRewards(node, false);
+        // The 100 is still unlocked, but we never claimed it, so it remains unclaimed.
+        // Because slash only subtracted from totalAll the “locked” portion, the older 100 is unaffected.
+        // So unlockedAfterSlash == 100 - lastClaimedAfter. But we haven't claimed at all, so lastClaimedAfter=0.
+        assertEq(unlockedAfterSlash, 100, "The older 100 remains claimable.");
+
+        // 6) Claim the 100
+        vm.prank(nodeProvider);
+        distributor.claimRewards(node);
+
+        // Confirm node got 100
+        uint256 nodeBalance = mockRewardToken.balanceOf(nodeProvider);
+        assertEq(nodeBalance, 100, "Node should receive the older (unlocked) 100 tokens");
+    }
+
+    // -----------------------------------------------------------------------
     // Test: setRewardRate and endRewards in ring-buffer version
     // -----------------------------------------------------------------------
     function testSetRewardRate() public {

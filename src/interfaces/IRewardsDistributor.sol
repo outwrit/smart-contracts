@@ -9,6 +9,7 @@ interface IRewardsDistributor {
     function calculateRewards(address node) external view returns (uint256, uint256);
     function claimRewards(address node) external;
     function setRewardRate(uint256 newRate) external;
+    function slashPendingRewards(address node) external;
     function endRewards() external;
     function joinPool(address node) external;
     function leavePool(address node) external;
