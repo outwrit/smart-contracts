@@ -26,8 +26,9 @@ contract SyntheticDataWorkValidatorTest is Test {
         bytes memory data = abi.encodePacked(workKey, workUnits);
 
         vm.warp(42);
-        bool success = validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, data);
+        (bool success, uint256 workUnitsSubmitted) = validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, data);
         assertTrue(success, "Work submission should succeed");
+        assertEq(workUnitsSubmitted, workUnits, "Work units should match");
 
         bytes32[] memory workKeys = validator.getWorkKeys(POOL_ID);
         assertEq(workKeys.length, 1, "Should have one work key");

@@ -308,7 +308,12 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
 
         IDomainRegistry.Domain memory domainInfo = domainRegistry.get(pools[poolId].domainId);
         IWorkValidation workValidation = IWorkValidation(domainInfo.validationLogic);
-        workValidation.submitWork(pools[poolId].domainId, poolId, provider, node, data);
+        (bool success, uint256 workUnits) = workValidation.submitWork(pools[poolId].domainId, poolId, provider, node, data);
+        
+        if (success) {
+            IRewardsDistributor rewardsDistributor = poolStates[poolId].rewardsDistributor;
+            rewardsDistributor.submitWork(node, workUnits);
+        }
     }
 
     function invalidateWork(uint256 poolId, bytes calldata data)

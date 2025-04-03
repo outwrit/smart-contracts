@@ -39,7 +39,7 @@ contract SyntheticDataWorkValidator is IWorkValidation {
 
     function submitWork(uint256 _domainId, uint256 poolId, address provider, address nodeId, bytes calldata data)
         external
-        returns (bool)
+        returns (bool, uint256)
     {
         require(msg.sender == computePool, "Unauthorized");
         require(data.length >= 64, "Data too short");
@@ -59,7 +59,7 @@ contract SyntheticDataWorkValidator is IWorkValidation {
 
         emit WorkSubmitted(poolId, provider, nodeId, workKey, workUnits);
 
-        return true;
+        return (true, workUnits);
     }
 
     function invalidateWork(uint256 poolId, bytes calldata data) external returns (address, address) {
