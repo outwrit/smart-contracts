@@ -7,8 +7,6 @@ import "./interfaces/IComputeRegistry.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-event PendingRewardsSlashed(uint256 indexed poolId, address indexed node, uint256 slashedAmount);
-
 contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlEnumerable {
     bytes32 public constant PRIME_ROLE = keccak256("PRIME_ROLE");
     bytes32 public constant FEDERATOR_ROLE = keccak256("FEDERATOR_ROLE");
