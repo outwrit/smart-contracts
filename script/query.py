@@ -178,7 +178,7 @@ class ChainReader:
             "call",
             "--rpc-url", self.rpc_url,
             reward_distributor,
-            "calculateRewards(address)(uint256)",
+            "calculateRewards(address)(uint256,uint256)",
             node_subkey
         ]
         return self._run_cast_command(args)
@@ -338,7 +338,7 @@ def main():
     try:
         result = func(*args.args)
         print(result)
-    except TypeError as e:
+    except TypeError:
         print(f"Error: Invalid number of arguments for command '{args.command}'")
         print(f"Usage: python read_chain.py {args.command} [args...]")
         sys.exit(1)
