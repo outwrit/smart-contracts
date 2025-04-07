@@ -88,6 +88,11 @@ contract RewardsDistributorFixed is IRewardsDistributor, AccessControlEnumerable
         rewardRatePerSecond = newRate;
     }
 
+    // Get the current reward rate
+    function getRewardRate() external view returns (uint256) {
+        return rewardRatePerSecond;
+    }
+
     // Node joining
     function joinPool(address node) external onlyRole(COMPUTE_POOL_ROLE) {
         if (endTime > 0) {

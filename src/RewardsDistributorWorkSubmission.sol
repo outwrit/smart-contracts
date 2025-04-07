@@ -237,6 +237,10 @@ contract RewardsDistributorWorkSubmission is IRewardsDistributor, AccessControlE
         rewardRatePerUnit = newRate;
     }
 
+    function getRewardRate() external view returns (uint256) {
+        return rewardRatePerUnit;
+    }
+
     function joinPool(address node) external onlyRole(COMPUTE_POOL_ROLE) {
         // If special logic is required on node join, add it here.
         if (nodeBuckets[node].lastBucketTimestamp == 0) {
