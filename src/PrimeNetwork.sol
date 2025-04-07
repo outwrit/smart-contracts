@@ -182,13 +182,12 @@ contract PrimeNetwork is AccessControlEnumerable {
     function slash(address provider, uint256 amount, bytes calldata reason) external onlyRole(VALIDATOR_ROLE) {
         uint256 slashed = stakeManager.slash(provider, amount, reason);
         AIToken.transfer(msg.sender, slashed);
-        _blacklistIfStakeTooLow(provider);
     }
 
     function invalidateWork(uint256 poolId, uint256 penalty, bytes calldata data) external onlyRole(VALIDATOR_ROLE) {
         (address provider, address node) = computePool.invalidateWork(poolId, data);
         try stakeManager.slash(provider, penalty, data) {
-            _blacklistIfStakeTooLow(provider);
+            // if slashing succeeded, do nothing
         } catch {
             // if slashing failed for whatever reason, blacklist provider to make sure they can't submit more work
             computeRegistry.setWhitelistStatus(provider, false);
