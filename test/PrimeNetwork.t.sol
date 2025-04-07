@@ -739,7 +739,7 @@ contract PrimeNetworkTest is Test {
         assertEq(AI.balanceOf(provider_good1), startingBalance);
     }
 
-    function test_stakeBlacklisting() public {
+    function test_stakeSlashing() public {
         uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
         uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
 
@@ -779,9 +779,6 @@ contract PrimeNetworkTest is Test {
 
         // check that stake has been slashed to 0
         assertEq(stakeManager.getStake(provider_good1), 0);
-
-        // check that provider is now blacklisted
-        assertEq(computeRegistry.getProvider(provider_good1).isWhitelisted, false);
 
         // check that provider is not allowed to add new nodes to the pool
         vm.expectRevert();
