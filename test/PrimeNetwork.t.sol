@@ -772,6 +772,9 @@ contract PrimeNetworkTest is Test {
 
         computePool.submitWork(pool, node_good1, abi.encodePacked(work_id, workUnits));
 
+        // Record validator's balance before slashing
+        uint256 validatorBalanceBefore = AI.balanceOf(validator);
+
         // slash provider
         uint256 stake = stakeManager.getStake(provider_good1);
         vm.startPrank(validator);
@@ -780,9 +783,41 @@ contract PrimeNetworkTest is Test {
         // check that stake has been slashed to 0
         assertEq(stakeManager.getStake(provider_good1), 0);
 
+        // check that the slashed amount was sent to the validator
+        assertEq(AI.balanceOf(validator), validatorBalanceBefore + stake);
+
         // check that provider is not allowed to add new nodes to the pool
         vm.expectRevert();
         nodeJoin(domain, pool, provider_good1, node_good1);
+    }
+
+    function test_slashSendsToValidator() public {
+        uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
+        uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
+
+        startPool(pool);
+
+        addProviderWithStake(provider_good1, minStake);
+        whitelistProvider(provider_good1);
+
+        // Record validator's balance before slashing
+        uint256 validatorBalanceBefore = AI.balanceOf(validator);
+
+        // Record provider's stake before slashing
+        uint256 providerStakeBefore = stakeManager.getStake(provider_good1);
+
+        // Define slash amount
+        uint256 slashAmount = 5;
+
+        // Slash provider
+        vm.startPrank(validator);
+        primeNetwork.slash(provider_good1, slashAmount, "test");
+
+        // Check that stake was reduced by slash amount
+        assertEq(stakeManager.getStake(provider_good1), providerStakeBefore - slashAmount);
+
+        // Check that the slashed amount was sent to the validator
+        assertEq(AI.balanceOf(validator), validatorBalanceBefore + slashAmount);
     }
 
     function test_nodeLeaveJoinIdempotency() public {
