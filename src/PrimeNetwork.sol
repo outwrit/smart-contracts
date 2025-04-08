@@ -187,7 +187,7 @@ contract PrimeNetwork is AccessControlEnumerable {
     function invalidateWork(uint256 poolId, uint256 penalty, bytes calldata data) external onlyRole(VALIDATOR_ROLE) {
         (address provider, address node) = computePool.invalidateWork(poolId, data);
         try stakeManager.slash(provider, penalty, data) {
-            // if slashing succeeded, do nothing
+            AIToken.transfer(msg.sender, penalty);
         } catch {
             // if slashing failed for whatever reason, blacklist provider to make sure they can't submit more work
             computeRegistry.setWhitelistStatus(provider, false);
