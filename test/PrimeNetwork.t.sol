@@ -203,7 +203,10 @@ contract PrimeNetworkTest is Test {
         return computePool.createComputePool(domainId, computeManager, name, uri, 0);
     }
 
-    function newPoolWithComputeLimit(uint256 domainId, string memory name, string memory uri, uint256 computeLimit) public returns (uint256) {
+    function newPoolWithComputeLimit(uint256 domainId, string memory name, string memory uri, uint256 computeLimit)
+        public
+        returns (uint256)
+    {
         vm.startPrank(pool_creator);
         return computePool.createComputePool(domainId, computeManager, name, uri, computeLimit);
     }
@@ -829,7 +832,9 @@ contract PrimeNetworkTest is Test {
 
     function test_computeLimit() public {
         uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
-        uint256 pool = newPoolWithComputeLimit(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1", computeUnitsPerNode);
+        uint256 pool = newPoolWithComputeLimit(
+            domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1", computeUnitsPerNode
+        );
 
         addProvider(provider_good1);
         whitelistProvider(provider_good1);
