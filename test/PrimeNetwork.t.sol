@@ -208,7 +208,10 @@ contract PrimeNetworkTest is Test {
         computePool.startComputePool(poolId);
     }
 
-    function nodeJoin(uint256 domainId, uint256 poolId, address provider, address node) public returns (address[] memory, bytes[] memory) {
+    function nodeJoin(uint256 domainId, uint256 poolId, address provider, address node)
+        public
+        returns (address[] memory, bytes[] memory)
+    {
         bytes32 digest = keccak256(abi.encodePacked(domainId, poolId, node)).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(computeManager_sk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
