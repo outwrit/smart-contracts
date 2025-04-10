@@ -203,6 +203,14 @@ contract PrimeNetworkTest is Test {
         return computePool.createComputePool(domainId, computeManager, name, uri, 0);
     }
 
+    function newPoolWithComputeLimit(uint256 domainId, string memory name, string memory uri, uint256 computeLimit)
+        public
+        returns (uint256)
+    {
+        vm.startPrank(pool_creator);
+        return computePool.createComputePool(domainId, computeManager, name, uri, computeLimit);
+    }
+
     function startPool(uint256 poolId) public {
         vm.startPrank(pool_creator);
         computePool.startComputePool(poolId);
@@ -894,5 +902,36 @@ contract PrimeNetworkTest is Test {
         vm.startPrank(provider_good1);
         vm.expectRevert(providerBlacklistError);
         computePool.changeComputePool(pool2, pool1, nodes, signatures);
+    }
+
+    function test_computeLimit() public {
+        uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
+        uint256 pool = newPoolWithComputeLimit(
+            domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1", computeUnitsPerNode
+        );
+
+        addProvider(provider_good1);
+        whitelistProvider(provider_good1);
+
+        addNodeWithCompute(provider_good1, node_good1, node_good1_sk, computeUnitsPerNode);
+
+        validateNode(provider_good1, node_good1);
+
+        assertEq(computeRegistry.getNode(provider_good1, node_good1).subkey, node_good1);
+
+        addNodeWithCompute(provider_good1, node_good2, node_good2_sk, computeUnitsPerNode);
+
+        validateNode(provider_good1, node_good2);
+
+        assertEq(computeRegistry.getNode(provider_good1, node_good2).subkey, node_good2);
+
+        startPool(pool);
+
+        nodeJoin(domain, pool, provider_good1, node_good1);
+
+        assertEq(isNodeInPool(pool, node_good1), true);
+
+        vm.expectRevert(bytes("ComputePool: pool is at capacity"));
+        nodeJoin(domain, pool, provider_good1, node_good2);
     }
 }
