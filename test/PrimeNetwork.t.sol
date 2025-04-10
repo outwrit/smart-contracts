@@ -216,7 +216,10 @@ contract PrimeNetworkTest is Test {
         computePool.startComputePool(poolId);
     }
 
-    function nodeJoin(uint256 domainId, uint256 poolId, address provider, address node) public {
+    function nodeJoin(uint256 domainId, uint256 poolId, address provider, address node)
+        public
+        returns (address[] memory, bytes[] memory)
+    {
         bytes32 digest = keccak256(abi.encodePacked(domainId, poolId, node)).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(computeManager_sk, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -226,6 +229,7 @@ contract PrimeNetworkTest is Test {
         nodes[0] = node;
         signatures[0] = signature;
         computePool.joinComputePool(poolId, provider, nodes, signatures);
+        return (nodes, signatures);
     }
 
     function nodeJoinMultiple(uint256 domainId, uint256 poolId, address provider, address[] memory nodes) public {
@@ -747,7 +751,7 @@ contract PrimeNetworkTest is Test {
         assertEq(AI.balanceOf(provider_good1), startingBalance);
     }
 
-    function test_stakeBlacklisting() public {
+    function test_stakeSlashing() public {
         uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
         uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
 
@@ -760,6 +764,7 @@ contract PrimeNetworkTest is Test {
         uint256 nodeComputeUnits = 1000;
 
         bytes memory work_id = hex"1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        uint256 workUnits = 10;
 
         startPool(pool);
 
@@ -777,7 +782,10 @@ contract PrimeNetworkTest is Test {
         validateNode(provider_good1, node_good1);
         nodeJoin(domain, pool, provider_good1, node_good1);
 
-        computePool.submitWork(pool, node_good1, work_id);
+        computePool.submitWork(pool, node_good1, abi.encodePacked(work_id, workUnits));
+
+        // Record validator's balance before slashing
+        uint256 validatorBalanceBefore = AI.balanceOf(validator);
 
         // slash provider
         uint256 stake = stakeManager.getStake(provider_good1);
@@ -787,12 +795,41 @@ contract PrimeNetworkTest is Test {
         // check that stake has been slashed to 0
         assertEq(stakeManager.getStake(provider_good1), 0);
 
-        // check that provider is now blacklisted
-        assertEq(computeRegistry.getProvider(provider_good1).isWhitelisted, false);
+        // check that the slashed amount was sent to the validator
+        assertEq(AI.balanceOf(validator), validatorBalanceBefore + stake);
 
         // check that provider is not allowed to add new nodes to the pool
         vm.expectRevert();
         nodeJoin(domain, pool, provider_good1, node_good1);
+    }
+
+    function test_slashSendsToValidator() public {
+        uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
+        uint256 pool = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
+
+        startPool(pool);
+
+        addProviderWithStake(provider_good1, minStake);
+        whitelistProvider(provider_good1);
+
+        // Record validator's balance before slashing
+        uint256 validatorBalanceBefore = AI.balanceOf(validator);
+
+        // Record provider's stake before slashing
+        uint256 providerStakeBefore = stakeManager.getStake(provider_good1);
+
+        // Define slash amount
+        uint256 slashAmount = 5;
+
+        // Slash provider
+        vm.startPrank(validator);
+        primeNetwork.slash(provider_good1, slashAmount, "test");
+
+        // Check that stake was reduced by slash amount
+        assertEq(stakeManager.getStake(provider_good1), providerStakeBefore - slashAmount);
+
+        // Check that the slashed amount was sent to the validator
+        assertEq(AI.balanceOf(validator), validatorBalanceBefore + slashAmount);
     }
 
     function test_nodeLeaveJoinIdempotency() public {
@@ -828,6 +865,43 @@ contract PrimeNetworkTest is Test {
         // make sure that we cannot leave with a node that has never joined
         vm.expectRevert();
         nodeLeave(pool, provider_good1, node_good2);
+    }
+
+    function test_providerBlacklist() public {
+        uint256 domain = newDomain("Decentralized Training", "https://primeintellect.ai/training/params");
+        uint256 pool1 = newPool(domain, "INTELLECT-1", "https://primeintellect.ai/pools/intellect-1");
+        uint256 pool2 = newPool(domain, "INTELLECT-2", "https://primeintellect.ai/pools/intellect-2");
+        bytes memory providerBlacklistError = bytes("ComputePool: provider is blacklisted");
+
+        addProvider(provider_good1);
+        whitelistProvider(provider_good1);
+
+        addNode(provider_good1, node_good1, node_good1_sk);
+
+        validateNode(provider_good1, node_good1);
+
+        assertEq(computeRegistry.getNode(provider_good1, node_good1).subkey, node_good1);
+
+        startPool(pool1);
+
+        (address[] memory nodes, bytes[] memory signatures) = nodeJoin(domain, pool1, provider_good1, node_good1);
+
+        assertEq(isNodeInPool(pool1, node_good1), true);
+
+        vm.startPrank(pool_creator);
+        computePool.blacklistAndPurgeProvider(pool1, provider_good1);
+
+        vm.startPrank(provider_good1);
+        vm.expectRevert(providerBlacklistError);
+        computePool.joinComputePool(pool1, provider_good1, nodes, signatures);
+
+        startPool(pool2);
+
+        nodeJoin(domain, pool2, provider_good1, node_good1);
+
+        vm.startPrank(provider_good1);
+        vm.expectRevert(providerBlacklistError);
+        computePool.changeComputePool(pool2, pool1, nodes, signatures);
     }
 
     function test_computeLimit() public {

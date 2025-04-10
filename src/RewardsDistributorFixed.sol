@@ -88,6 +88,11 @@ contract RewardsDistributorFixed is IRewardsDistributor, AccessControlEnumerable
         rewardRatePerSecond = newRate;
     }
 
+    // Get the current reward rate
+    function getRewardRate() external view returns (uint256) {
+        return rewardRatePerSecond;
+    }
+
     // Node joining
     function joinPool(address node) external onlyRole(COMPUTE_POOL_ROLE) {
         if (endTime > 0) {
@@ -136,12 +141,12 @@ contract RewardsDistributorFixed is IRewardsDistributor, AccessControlEnumerable
         rewardToken.transfer(node, payableAmount);
     }
 
-    function calculateRewards(address node) external view returns (uint256) {
+    function calculateRewards(address node) external view returns (uint256, uint256) {
         NodeDataInternal memory nd = nodeInfoInternal[node];
         uint256 timeDelta;
         // If the node has never joined, or there are no active computeUnits in total, no extra rewards to calculate.
         if (!computePool.isNodeInPool(poolId, node) && nd.unclaimedRewards == 0) {
-            return 0;
+            return (0, 0);
         }
 
         // 1. Calculate how many rewards would be distributed if we updated the global index now
@@ -165,11 +170,22 @@ contract RewardsDistributorFixed is IRewardsDistributor, AccessControlEnumerable
             pending += newlyAccrued;
         }
 
-        return pending;
+        return (pending, 0);
+    }
+
+    function slashPendingRewards(address node) external view onlyRole(COMPUTE_POOL_ROLE) {
+        node == node;
     }
 
     function endRewards() external onlyRole(COMPUTE_POOL_ROLE) {
         _updateGlobalIndex();
         endTime = block.timestamp;
+    }
+
+    function submitWork(address node, uint256 workUnits) external pure {
+        // suppress warnings
+        node == node;
+        workUnits == workUnits;
+        return;
     }
 }

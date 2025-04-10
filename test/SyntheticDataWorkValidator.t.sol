@@ -22,11 +22,13 @@ contract SyntheticDataWorkValidatorTest is Test {
 
     function testSubmitWork() public {
         bytes32 workKey = keccak256("test_work");
-        bytes memory data = abi.encodePacked(workKey);
+        uint256 workUnits = 10;
+        bytes memory data = abi.encodePacked(workKey, workUnits);
 
         vm.warp(42);
-        bool success = validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, data);
+        (bool success, uint256 workUnitsSubmitted) = validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, data);
         assertTrue(success, "Work submission should succeed");
+        assertEq(workUnitsSubmitted, workUnits, "Work units should match");
 
         bytes32[] memory workKeys = validator.getWorkKeys(POOL_ID);
         assertEq(workKeys.length, 1, "Should have one work key");
@@ -40,7 +42,8 @@ contract SyntheticDataWorkValidatorTest is Test {
 
     function testCannotSubmitDuplicateWork() public {
         bytes32 workKey = keccak256("test_work");
-        bytes memory data = abi.encodePacked(workKey);
+        uint256 workUnits = 10;
+        bytes memory data = abi.encodePacked(workKey, workUnits);
 
         validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, data);
 
@@ -50,7 +53,8 @@ contract SyntheticDataWorkValidatorTest is Test {
 
     function testInvalidateWork() public {
         bytes32 workKey = keccak256("test_work");
-        bytes memory data = abi.encodePacked(workKey);
+        uint256 workUnits = 10;
+        bytes memory data = abi.encodePacked(workKey, workUnits);
 
         validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, data);
 
@@ -69,7 +73,8 @@ contract SyntheticDataWorkValidatorTest is Test {
 
     function testCannotInvalidateAfterValidityPeriod() public {
         bytes32 workKey = keccak256("test_work");
-        bytes memory data = abi.encodePacked(workKey);
+        uint256 workUnits = 10;
+        bytes memory data = abi.encodePacked(workKey, workUnits);
 
         validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, data);
 
@@ -83,15 +88,16 @@ contract SyntheticDataWorkValidatorTest is Test {
     function testGetWorkSince() public {
         bytes32 workKey1 = keccak256("test_work_1");
         bytes32 workKey2 = keccak256("test_work_2");
+        uint256 workUnits = 10;
 
         bytes32[] memory recentWork = validator.getWorkSince(POOL_ID, 0);
         assertEq(recentWork.length, 0, "Should have no work");
 
         vm.warp(1000);
-        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey1));
+        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey1, workUnits));
 
         vm.warp(2000);
-        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey2));
+        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey2, workUnits));
 
         recentWork = validator.getWorkSince(POOL_ID, 2001);
         assertEq(recentWork.length, 0, "Should have no work");
@@ -111,21 +117,22 @@ contract SyntheticDataWorkValidatorTest is Test {
         bytes32 workKey2 = keccak256("test_work_2");
         bytes32 workKey3 = keccak256("test_work_3");
         bytes32 workKey4 = keccak256("test_work_4");
+        uint256 workUnits = 10;
 
         vm.warp(1000);
-        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey1));
+        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey1, workUnits));
         vm.warp(2000);
-        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey2));
+        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey2, workUnits));
         vm.warp(3000);
-        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey3));
+        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey3, workUnits));
         vm.warp(4000);
-        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey4));
+        validator.submitWork(DOMAIN_ID, POOL_ID, provider, nodeId, abi.encodePacked(workKey4, workUnits));
 
         bytes32[] memory recentInvalidWork = validator.getInvalidWorkSince(POOL_ID, 0);
         assertEq(recentInvalidWork.length, 0, "Should have no recent invalid work");
 
-        validator.invalidateWork(POOL_ID, abi.encodePacked(workKey2));
-        validator.invalidateWork(POOL_ID, abi.encodePacked(workKey3));
+        validator.invalidateWork(POOL_ID, abi.encodePacked(workKey2, workUnits));
+        validator.invalidateWork(POOL_ID, abi.encodePacked(workKey3, workUnits));
 
         recentInvalidWork = validator.getInvalidWorkSince(POOL_ID, 3001);
         assertEq(recentInvalidWork.length, 0, "Should have one recent invalid work");
@@ -142,7 +149,8 @@ contract SyntheticDataWorkValidatorTest is Test {
 
     function testUnauthorizedSubmission() public {
         bytes32 workKey = keccak256("test_work");
-        bytes memory data = abi.encodePacked(workKey);
+        uint256 workUnits = 10;
+        bytes memory data = abi.encodePacked(workKey, workUnits);
 
         // Set msg.sender to a different address
         vm.prank(address(0x3));
@@ -153,7 +161,8 @@ contract SyntheticDataWorkValidatorTest is Test {
 
     function testInvalidDomainId() public {
         bytes32 workKey = keccak256("test_work");
-        bytes memory data = abi.encodePacked(workKey);
+        uint256 workUnits = 10;
+        bytes memory data = abi.encodePacked(workKey, workUnits);
 
         vm.expectRevert("Invalid domainId");
         validator.submitWork(DOMAIN_ID + 1, POOL_ID, provider, nodeId, data);

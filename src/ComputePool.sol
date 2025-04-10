@@ -284,6 +284,8 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         require(pools[toPoolId].status == PoolStatus.ACTIVE, "ComputePool: dest pool is not ready");
         address provider = msg.sender;
 
+        require(!poolStates[toPoolId].blacklistedProviders[provider], "ComputePool: provider is blacklisted");
+
         if (nodekeys.length == poolStates[fromPoolId].providerActiveNodes[provider]) {
             // If all nodes are being moved, just move the provider
             _leaveComputePool(fromPoolId, provider, new address[](0));
@@ -308,7 +310,13 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
 
         IDomainRegistry.Domain memory domainInfo = domainRegistry.get(pools[poolId].domainId);
         IWorkValidation workValidation = IWorkValidation(domainInfo.validationLogic);
-        workValidation.submitWork(pools[poolId].domainId, poolId, provider, node, data);
+        (bool success, uint256 workUnits) =
+            workValidation.submitWork(pools[poolId].domainId, poolId, provider, node, data);
+
+        if (success) {
+            IRewardsDistributor rewardsDistributor = poolStates[poolId].rewardsDistributor;
+            rewardsDistributor.submitWork(node, workUnits);
+        }
     }
 
     function invalidateWork(uint256 poolId, bytes calldata data)
@@ -320,6 +328,8 @@ contract ComputePool is IComputePool, AccessControlEnumerable {
         IDomainRegistry.Domain memory domainInfo = domainRegistry.get(pools[poolId].domainId);
         IWorkValidation workValidation = IWorkValidation(domainInfo.validationLogic);
         (address provider, address node) = workValidation.invalidateWork(poolId, data);
+        IRewardsDistributor rewardsDistributor = poolStates[poolId].rewardsDistributor;
+        rewardsDistributor.slashPendingRewards(node);
         if (poolStates[poolId].poolNodes.contains(node)) {
             _ejectNode(poolId, node);
         }

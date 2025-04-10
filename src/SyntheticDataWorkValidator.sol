@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/IWorkValidation.sol";
 
-event WorkSubmitted(uint256 poolId, address provider, address nodeId, bytes32 workKey);
+event WorkSubmitted(uint256 poolId, address provider, address nodeId, bytes32 workKey, uint256 workUnits);
 
-event WorkInvalidated(uint256 poolId, address provider, address nodeId, bytes32 workKey);
+event WorkInvalidated(uint256 poolId, address provider, address nodeId, bytes32 workKey, uint256 workUnits);
 
 contract SyntheticDataWorkValidator is IWorkValidation {
     using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -14,6 +14,7 @@ contract SyntheticDataWorkValidator is IWorkValidation {
     uint256 domainId;
     address computePool;
     uint256 workValidityPeriod = 1 days;
+    uint256 constant MAX_WORK_UNITS = 1000;
 
     struct WorkState {
         EnumerableSet.Bytes32Set workKeys;
@@ -25,6 +26,7 @@ contract SyntheticDataWorkValidator is IWorkValidation {
         address provider;
         address nodeId;
         uint64 timestamp;
+        uint256 workUnits;
     }
 
     mapping(uint256 => WorkState) poolWork;
@@ -37,23 +39,27 @@ contract SyntheticDataWorkValidator is IWorkValidation {
 
     function submitWork(uint256 _domainId, uint256 poolId, address provider, address nodeId, bytes calldata data)
         external
-        returns (bool)
+        returns (bool, uint256)
     {
         require(msg.sender == computePool, "Unauthorized");
-        require(data.length >= 32, "Data too short");
+        require(data.length >= 64, "Data too short");
         require(domainId == _domainId, "Invalid domainId");
         bytes32 workKey;
+        uint256 workUnits = 0;
         assembly {
             workKey := calldataload(data.offset)
+            workUnits := calldataload(add(data.offset, 32))
         }
         require(!poolWork[poolId].workKeys.contains(workKey), "Work already submitted");
+        require(!poolWork[poolId].invalidWorkKeys.contains(workKey), "Work already invalidated");
+        require(workUnits > 0 && workUnits <= MAX_WORK_UNITS, "Invalid work units");
 
         poolWork[poolId].workKeys.add(workKey);
-        poolWork[poolId].work[workKey] = WorkInfo(provider, nodeId, uint64(block.timestamp));
+        poolWork[poolId].work[workKey] = WorkInfo(provider, nodeId, uint64(block.timestamp), workUnits);
 
-        emit WorkSubmitted(poolId, provider, nodeId, workKey);
+        emit WorkSubmitted(poolId, provider, nodeId, workKey, workUnits);
 
-        return true;
+        return (true, workUnits);
     }
 
     function invalidateWork(uint256 poolId, bytes calldata data) external returns (address, address) {
@@ -74,7 +80,7 @@ contract SyntheticDataWorkValidator is IWorkValidation {
         WorkInfo memory info = poolWork[poolId].work[workKey];
         poolWork[poolId].workKeys.remove(workKey);
 
-        emit WorkInvalidated(poolId, info.provider, info.nodeId, workKey);
+        emit WorkInvalidated(poolId, info.provider, info.nodeId, workKey, info.workUnits);
 
         return (info.provider, info.nodeId);
     }

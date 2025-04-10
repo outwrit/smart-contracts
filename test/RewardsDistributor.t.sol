@@ -229,7 +229,7 @@ contract RewardsDistributorTest is Test {
         assertFalse(isActive);
 
         // Check that calculateRewards shows the same
-        uint256 calculatedRewards = distributor.calculateRewards(node);
+        (uint256 calculatedRewards,) = distributor.calculateRewards(node);
 
         // The unclaimedRewards should have accrued
         (,, uint256 unclaimedRewards,) = distributor.nodeInfo(node);
@@ -257,7 +257,7 @@ contract RewardsDistributorTest is Test {
         distributor.claimRewards(node);
 
         // 5. Node's provider claims on behalf of that node
-        uint256 calculatedRewards = distributor.calculateRewards(node);
+        (uint256 calculatedRewards,) = distributor.calculateRewards(node);
         vm.prank(nodeProvider);
         distributor.claimRewards(node);
 
@@ -306,7 +306,7 @@ contract RewardsDistributorTest is Test {
         vm.warp(block.timestamp + 100);
 
         // Claim
-        uint256 calculatedRewards = distributor.calculateRewards(node);
+        (uint256 calculatedRewards,) = distributor.calculateRewards(node);
         vm.prank(nodeProvider);
         distributor.claimRewards(node);
 
@@ -344,12 +344,12 @@ contract RewardsDistributorTest is Test {
         skip(15);
         // 4. Let both nodes claim
         //    We'll do it from their providers
-        uint256 node1Pending = distributor.calculateRewards(node1);
+        (uint256 node1Pending,) = distributor.calculateRewards(node1);
         vm.startPrank(nodeProvider1);
         distributor.claimRewards(node1);
         vm.stopPrank();
 
-        uint256 node2Pending = distributor.calculateRewards(node2);
+        (uint256 node2Pending,) = distributor.calculateRewards(node2);
         vm.startPrank(nodeProvider2);
         distributor.claimRewards(node2);
         vm.stopPrank();
@@ -423,12 +423,12 @@ contract RewardsDistributorTest is Test {
         skip(10);
 
         // Step 7: Claim for both from their respective providers
-        uint256 node1Pending = distributor.calculateRewards(node1);
+        (uint256 node1Pending,) = distributor.calculateRewards(node1);
         vm.startPrank(nodeProvider1);
         distributor.claimRewards(node1);
         vm.stopPrank();
 
-        uint256 node2Pending = distributor.calculateRewards(node2);
+        (uint256 node2Pending,) = distributor.calculateRewards(node2);
         vm.startPrank(nodeProvider2);
         distributor.claimRewards(node2);
         vm.stopPrank();
