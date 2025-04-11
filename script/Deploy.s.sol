@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Script.sol";
 import "../src/AIToken.sol";
+import "../src/AITokenTransferRole.sol";
 import "../src/ComputePool.sol";
 import "../src/ComputeRegistry.sol";
 import "../src/DomainRegistry.sol";
@@ -11,6 +12,10 @@ import "../src/StakeManager.sol";
 import {RewardsDistributorWorkSubmissionFactory} from "../src/RewardsDistributorWorkSubmissionFactory.sol";
 
 contract DeployScript is Script {
+    // ether = 10^18, so this is 2.5e16
+    uint256 stakeMin = 0.025 ether;
+    uint256 initialSupply = 1000000 * 1e18; // 1M tokens
+
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_FEDERATOR");
         address deployer = vm.addr(deployerPrivateKey);
@@ -19,7 +24,9 @@ contract DeployScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy AIToken first
-        AIToken aiToken = new AIToken("AI Token", "AI");
+        AITokenTransferRole aiToken = new AITokenTransferRole("AI Token", "AI");
+        aiToken.approveTransferAddress(deployer);
+        aiToken.approveTransferAddress(validator);
 
         // Deploy PrimeNetwork
         PrimeNetwork primeNetwork = new PrimeNetwork(
@@ -28,12 +35,15 @@ contract DeployScript is Script {
             aiToken
         );
 
+        aiToken.approveTransferAddress(address(primeNetwork));
+
         // Deploy core registries with deployer as admin
         ComputeRegistry computeRegistry = new ComputeRegistry(address(primeNetwork));
         DomainRegistry domainRegistry = new DomainRegistry(address(primeNetwork));
 
         // Deploy StakeManager with deployer as admin
         StakeManager stakeManager = new StakeManager(address(primeNetwork), 7 days, aiToken);
+        aiToken.approveTransferAddress(address(stakeManager));
 
         // Deploy RewardsDistributorFixedFactory
         RewardsDistributorWorkSubmissionFactory rewardsDistributorFactory =
@@ -50,10 +60,10 @@ contract DeployScript is Script {
         );
 
         // Optional: Set up initial parameters
-        primeNetwork.setStakeMinimum(100 * 1e18); // 100 tokens minimum stake
+        primeNetwork.setStakeMinimum(stakeMin); // set minimum stake
 
         // Optional: Mint some initial tokens to the deployer
-        aiToken.mint(deployer, 1000000 * 1e18); // 1M tokens
+        aiToken.mint(deployer, initialSupply); // set inital supply
 
         vm.stopBroadcast();
 
