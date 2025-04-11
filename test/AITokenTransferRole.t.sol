@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../src/AITokenTransferRole.sol"; // adjust path if needed
+import "../src/AITokenTransferRole.sol";
 
 contract AITokenTransferRoleTest is Test {
     AITokenTransferRole token;
