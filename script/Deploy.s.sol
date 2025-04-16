@@ -85,7 +85,7 @@ contract DeployScript is DeploymentUtil {
         console.log("Deployed contracts:");
         logDeployments(deployments);
 
-        // keep these in the same order as in the DeployWorkValidator script
+        // Write deployments to file
         writeDeployments(deployments, deploymentsFile);
     }
 }
