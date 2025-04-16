@@ -44,12 +44,12 @@ contract DeploymentUtil is Script {
 
         Deployments memory deployments = Deployments({
             AIToken: address(bytes20(deploymentsInternal.AIToken << (8 * 12))),
-            ComputeRegistry: address(bytes20(deploymentsInternal.ComputeRegistry << (8 * 12))),
             ComputePool: address(bytes20(deploymentsInternal.ComputePool << (8 * 12))),
+            ComputeRegistry: address(bytes20(deploymentsInternal.ComputeRegistry << (8 * 12))),
             DomainRegistry: address(bytes20(deploymentsInternal.DomainRegistry << (8 * 12))),
-            StakeManager: address(bytes20(deploymentsInternal.StakeManager << (8 * 12))),
             PrimeNetwork: address(bytes20(deploymentsInternal.PrimeNetwork << (8 * 12))),
             RewardsDistributorFactory: address(bytes20(deploymentsInternal.RewardsDistributorFactory << (8 * 12))),
+            StakeManager: address(bytes20(deploymentsInternal.StakeManager << (8 * 12))),
             WorkValidator: address(bytes20(deploymentsInternal.WorkValidator << (8 * 12)))
         });
 
@@ -65,8 +65,8 @@ contract DeploymentUtil is Script {
         vm.serializeAddress("contracts", "ComputeRegistry", address(deployments.ComputeRegistry));
         vm.serializeAddress("contracts", "ComputePool", address(deployments.ComputePool));
         vm.serializeAddress("contracts", "DomainRegistry", address(deployments.DomainRegistry));
-        vm.serializeAddress("contracts", "StakeManager", address(deployments.StakeManager));
         vm.serializeAddress("contracts", "PrimeNetwork", address(deployments.PrimeNetwork));
+        vm.serializeAddress("contracts", "StakeManager", address(deployments.StakeManager));
         vm.serializeAddress("contracts", "RewardsDistributorFactory", address(deployments.RewardsDistributorFactory));
 
         string memory finalJson = vm.serializeAddress("contracts", "WorkValidator", address(deployments.WorkValidator));
@@ -76,12 +76,12 @@ contract DeploymentUtil is Script {
 
     function logDeployments(Deployments memory deployments) internal pure {
         console.log("AIToken:", address(deployments.AIToken));
-        console.log("ComputeRegistry:", address(deployments.ComputeRegistry));
         console.log("ComputePool:", address(deployments.ComputePool));
+        console.log("ComputeRegistry:", address(deployments.ComputeRegistry));
         console.log("DomainRegistry:", address(deployments.DomainRegistry));
-        console.log("StakeManager:", address(deployments.StakeManager));
         console.log("PrimeNetwork:", address(deployments.PrimeNetwork));
         console.log("RewardsDistributorFactory:", address(deployments.RewardsDistributorFactory));
+        console.log("StakeManager:", address(deployments.StakeManager));
         console.log("WorkValidator:", address(deployments.WorkValidator));
     }
 }

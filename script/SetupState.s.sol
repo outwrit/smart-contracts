@@ -30,11 +30,8 @@ contract SetupStateScript is DeploymentUtil {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        console.log("Creating domain...");
         console.log("Deployer:", deployer);
-        console.log("WorkValidator:", address(workValidator));
-        console.log("ComputePool:", address(computePool));
-        console.log("PrimeNetwork:", address(primeNetwork));
+        console.log("Creating domain...");
         uint256 domainId = primeNetwork.createDomain(
             "Decentralized Training", workValidator, "https://primeintellect.ai/training/params"
         );

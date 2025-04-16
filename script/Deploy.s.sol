@@ -72,12 +72,12 @@ contract DeployScript is DeploymentUtil {
 
         Deployments memory deployments = Deployments({
             AIToken: address(aiToken),
-            ComputeRegistry: address(computeRegistry),
             ComputePool: address(computePool),
+            ComputeRegistry: address(computeRegistry),
             DomainRegistry: address(domainRegistry),
-            StakeManager: address(stakeManager),
             PrimeNetwork: address(primeNetwork),
             RewardsDistributorFactory: address(rewardsDistributorFactory),
+            StakeManager: address(stakeManager),
             WorkValidator: address(0x0) // Placeholder for WorkValidator
         });
 
