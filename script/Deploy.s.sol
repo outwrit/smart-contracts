@@ -11,10 +11,13 @@ import "../src/PrimeNetwork.sol";
 import "../src/StakeManager.sol";
 import {RewardsDistributorWorkSubmissionFactory} from "../src/RewardsDistributorWorkSubmissionFactory.sol";
 
-contract DeployScript is Script {
+import "./deployment_util.sol";
+
+contract DeployScript is DeploymentUtil {
     // ether = 10^18, so this is 2.5e16
     uint256 stakeMin = 0.025 ether;
     uint256 initialSupply = 1000000 * 1e18; // 1M tokens
+    string deploymentsFile = "./release/deployments.json";
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY_FEDERATOR");
@@ -67,22 +70,22 @@ contract DeployScript is Script {
 
         vm.stopBroadcast();
 
+        Deployments memory deployments = Deployments({
+            AIToken: address(aiToken),
+            ComputeRegistry: address(computeRegistry),
+            ComputePool: address(computePool),
+            DomainRegistry: address(domainRegistry),
+            StakeManager: address(stakeManager),
+            PrimeNetwork: address(primeNetwork),
+            RewardsDistributorFactory: address(rewardsDistributorFactory),
+            WorkValidator: address(0x0) // Placeholder for WorkValidator
+        });
+
         // Log deployed addresses
         console.log("Deployed contracts:");
-        console.log("AIToken:", address(aiToken));
-        console.log("ComputeRegistry:", address(computeRegistry));
-        console.log("DomainRegistry:", address(domainRegistry));
-        console.log("StakeManager:", address(stakeManager));
-        console.log("PrimeNetwork:", address(primeNetwork));
-        console.log("ComputePool:", address(computePool));
+        logDeployments(deployments);
 
-        vm.serializeAddress("contracts", "AIToken", address(aiToken));
-        vm.serializeAddress("contracts", "ComputeRegistry", address(computeRegistry));
-        vm.serializeAddress("contracts", "DomainRegistry", address(domainRegistry));
-        vm.serializeAddress("contracts", "StakeManager", address(stakeManager));
-        vm.serializeAddress("contracts", "PrimeNetwork", address(primeNetwork));
-        string memory finalJson = vm.serializeAddress("contracts", "ComputePool", address(computePool));
-
-        vm.writeJson(finalJson, "./release/deployments.json");
+        // keep these in the same order as in the DeployWorkValidator script
+        writeDeployments(deployments, deploymentsFile);
     }
 }
