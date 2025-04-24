@@ -978,20 +978,31 @@ contract PrimeNetworkTest is Test {
 
     function test_roleChange() public {
         // set validator role
+        vm.startPrank(provider_good1);
+        vm.expectRevert();
+        primeNetwork.setValidator(provider_good1);
+
         vm.startPrank(federator);
         assertEq(primeNetwork.hasRole(VALIDATOR_ROLE, validator), true);
         primeNetwork.setValidator(provider_good1);
         assertEq(primeNetwork.hasRole(VALIDATOR_ROLE, validator), false);
         assertEq(primeNetwork.hasRole(VALIDATOR_ROLE, provider_good1), true);
         primeNetwork.setValidator(validator);
+        assertEq(primeNetwork.hasRole(VALIDATOR_ROLE, provider_good1), false);
         assertEq(primeNetwork.hasRole(VALIDATOR_ROLE, validator), true);
 
         // set federator role
+        vm.startPrank(provider_good1);
+        vm.expectRevert();
+        primeNetwork.setFederator(provider_good1);
+
+        vm.startPrank(federator);
         assertEq(primeNetwork.hasRole(FEDERATOR_ROLE, federator), true);
         primeNetwork.setFederator(provider_good1);
         assertEq(primeNetwork.hasRole(FEDERATOR_ROLE, federator), false);
         assertEq(primeNetwork.hasRole(FEDERATOR_ROLE, provider_good1), true);
         primeNetwork.setFederator(federator);
+        assertEq(primeNetwork.hasRole(FEDERATOR_ROLE, provider_good1), false);
         assertEq(primeNetwork.hasRole(FEDERATOR_ROLE, federator), true);
     }
 
